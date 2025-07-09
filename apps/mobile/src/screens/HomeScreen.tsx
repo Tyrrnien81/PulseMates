@@ -1,5 +1,13 @@
-import React, { useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import React, { useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  Linking,
+  Alert,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { colors } from '../constants/Colors';
 import { typography } from '../constants/Typography';
@@ -11,14 +19,10 @@ import { useAppContext } from '../context/AppContext';
 export function HomeScreen() {
   const { state, dispatch, actions } = useAppContext();
 
-  const checkHealth = useCallback(() => {
-    actions.checkApiHealth();
-  }, [actions]);
-
   useEffect(() => {
     // Check API health when component mounts
-    checkHealth();
-  }, [checkHealth]);
+    actions.checkApiHealth();
+  }, [actions]);
 
   const handleStartRecording = () => {
     dispatch({ type: 'NAVIGATE_TO', payload: 'recording' });
@@ -30,6 +34,29 @@ export function HomeScreen() {
 
   const viewResults = () => {
     dispatch({ type: 'NAVIGATE_TO', payload: 'results' });
+  };
+
+  const handleCallCounseling = async () => {
+    // Replace with your campus counseling number
+    const phoneNumber = '1-608-265-5600';
+    const phoneUrl = `tel:${phoneNumber}`;
+
+    try {
+      const supported = await Linking.canOpenURL(phoneUrl);
+      if (supported) {
+        await Linking.openURL(phoneUrl);
+      } else {
+        Alert.alert(
+          'Cannot make call',
+          "Your device doesn't support making calls from this app",
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to initiate call. Please try again.', [
+        { text: 'OK' },
+      ]);
+    }
   };
 
   return (
@@ -157,7 +184,7 @@ export function HomeScreen() {
 
           {/* Quick Tips */}
           <Card variant="default" padding="lg" style={styles.tipsCard}>
-            <Text style={styles.tipsTitle}>💡 Daily Wellness Tips</Text>
+            <Text style={styles.tipsTitle}>Daily Wellness Tips</Text>
             <Text style={styles.tipsText}>
               • Take deep breaths when feeling overwhelmed{'\n'}• Share your
               thoughts and feelings regularly{'\n'}• Practice gratitude for
@@ -168,26 +195,15 @@ export function HomeScreen() {
 
           {/* Crisis Resources */}
           <Card variant="outlined" padding="lg" style={styles.crisisCard}>
-            <Text style={styles.crisisTitle}>🆘 Need Immediate Support?</Text>
+            <Text style={styles.crisisTitle}> Need Immediate Support?</Text>
             <Text style={styles.crisisText}>
               If you&apos;re in crisis or having thoughts of self-harm, please
               reach out immediately:
             </Text>
             <View style={styles.crisisButtons}>
               <Button
-                title="🇺🇸 988 Suicide Prevention"
-                onPress={() => {
-                  /* TODO: Implement call functionality */
-                }}
-                variant="outline"
-                size="small"
-                style={styles.crisisButton}
-              />
-              <Button
                 title="📞 Campus Counseling"
-                onPress={() => {
-                  /* TODO: Implement campus resources */
-                }}
+                onPress={handleCallCounseling}
                 variant="outline"
                 size="small"
                 style={styles.crisisButton}

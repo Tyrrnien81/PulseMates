@@ -99,7 +99,7 @@ export function RecordingScreen() {
     if (!audioRecording.hasPermissions) {
       audioRecording.requestPermissions();
     }
-  }, [audioRecording]);
+  }, [audioRecording.hasPermissions, audioRecording.requestPermissions]);
 
   useEffect(() => {
     // Handle audio recording errors

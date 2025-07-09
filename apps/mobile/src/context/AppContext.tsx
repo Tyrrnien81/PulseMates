@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useCallback,
+  useMemo,
+  ReactNode,
+} from 'react';
 import { apiService, CheckinResponse } from '../services/api';
 
 export interface AppState {
@@ -234,103 +241,107 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  const actions = {
-    checkApiHealth: async () => {
-      dispatch({
-        type: 'SET_LOADING',
-        payload: { type: 'health', loading: true },
-      });
+  const checkApiHealth = useCallback(async () => {
+    dispatch({
+      type: 'SET_LOADING',
+      payload: { type: 'health', loading: true },
+    });
 
-      try {
-        const result = await apiService.checkHealth();
+    try {
+      const result = await apiService.checkHealth();
 
-        if (result.success && result.data) {
-          dispatch({
-            type: 'SET_HEALTH_STATUS',
-            payload: {
-              isHealthy: true,
-              message: result.data.message,
-            },
-          });
-        } else {
-          dispatch({
-            type: 'SET_HEALTH_STATUS',
-            payload: {
-              isHealthy: false,
-              message: result.message || 'Health check failed',
-            },
-          });
-        }
-      } catch (error) {
+      if (result.success && result.data) {
+        dispatch({
+          type: 'SET_HEALTH_STATUS',
+          payload: {
+            isHealthy: true,
+            message: result.data.message,
+          },
+        });
+      } else {
         dispatch({
           type: 'SET_HEALTH_STATUS',
           payload: {
             isHealthy: false,
-            message: 'Connection failed',
+            message: result.message || 'Health check failed',
           },
         });
-      } finally {
-        dispatch({
-          type: 'SET_LOADING',
-          payload: { type: 'health', loading: false },
-        });
       }
-    },
+    } catch (error) {
+      dispatch({
+        type: 'SET_HEALTH_STATUS',
+        payload: {
+          isHealthy: false,
+          message: 'Connection failed',
+        },
+      });
+    } finally {
+      dispatch({
+        type: 'SET_LOADING',
+        payload: { type: 'health', loading: false },
+      });
+    }
+  }, []);
 
-    uploadRecording: async () => {
-      if (!state.recordingData.uri) {
-        dispatch({
-          type: 'SET_ERROR',
-          payload: 'No recording found to upload',
-        });
-        return;
-      }
+  const uploadRecording = useCallback(async () => {
+    if (!state.recordingData.uri) {
+      dispatch({ type: 'SET_ERROR', payload: 'No recording found to upload' });
+      return;
+    }
 
-      dispatch({ type: 'START_UPLOAD' });
+    dispatch({ type: 'START_UPLOAD' });
 
-      try {
-        const result = await apiService.submitCheckin(
-          state.recordingData.uri,
-          state.recordingData.duration
-        );
+    try {
+      const result = await apiService.submitCheckin(
+        state.recordingData.uri,
+        state.recordingData.duration
+      );
 
-        if (result.success && result.data) {
-          dispatch({ type: 'UPLOAD_SUCCESS', payload: result.data });
+      if (result.success && result.data) {
+        dispatch({ type: 'UPLOAD_SUCCESS', payload: result.data });
 
-          // If we have complete data, navigate to results
-          if (
-            result.data.transcript &&
-            result.data.sentiment &&
-            result.data.coaching
-          ) {
-            dispatch({ type: 'NAVIGATE_TO', payload: 'results' });
-          } else {
-            // Start polling for processing completion
-            dispatch({
-              type: 'SET_LOADING',
-              payload: { type: 'processing', loading: true },
-            });
-            // TODO: Implement polling for processing status
-          }
+        // If we have complete data, navigate to results
+        if (
+          result.data.transcript &&
+          result.data.sentiment &&
+          result.data.coaching
+        ) {
+          dispatch({ type: 'NAVIGATE_TO', payload: 'results' });
         } else {
+          // Start polling for processing completion
           dispatch({
-            type: 'UPLOAD_ERROR',
-            payload: result.message || 'Upload failed',
+            type: 'SET_LOADING',
+            payload: { type: 'processing', loading: true },
           });
+          // TODO: Implement polling for processing status
         }
-      } catch (error) {
+      } else {
         dispatch({
           type: 'UPLOAD_ERROR',
-          payload: 'Failed to upload recording. Please try again.',
+          payload: result.message || 'Upload failed',
         });
       }
-    },
+    } catch (error) {
+      dispatch({
+        type: 'UPLOAD_ERROR',
+        payload: 'Failed to upload recording. Please try again.',
+      });
+    }
+  }, [state.recordingData.uri, state.recordingData.duration]);
 
-    resetApp: () => {
-      dispatch({ type: 'RESET_RECORDING' });
-      dispatch({ type: 'NAVIGATE_TO', payload: 'home' });
-    },
-  };
+  const resetApp = useCallback(() => {
+    dispatch({ type: 'RESET_RECORDING' });
+    dispatch({ type: 'NAVIGATE_TO', payload: 'home' });
+  }, []);
+
+  const actions = useMemo(
+    () => ({
+      checkApiHealth,
+      uploadRecording,
+      resetApp,
+    }),
+    [checkApiHealth, uploadRecording, resetApp]
+  );
 
   return (
     <AppContext.Provider value={{ state, dispatch, actions }}>
