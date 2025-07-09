@@ -82,7 +82,7 @@ jobs:
         run: pnpm --filter server test
 
       - name: Run mobile tests
-        run: pnpm --filter mobile test --watchAll=false
+        run: pnpm --filter mobile test:ci
 
   build:
     name: Build
