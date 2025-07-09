@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: pulse_mates_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: pulse_mates
+      MYSQL_USER: pulse
+      MYSQL_PASSWORD: pulse123
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      timeout: 20s
+      retries: 10
+
+  adminer:
+    image: adminer
+    container_name: pulse_mates_adminer
+    restart: always
+    ports:
+      - '8080:8080'
+    depends_on:
+      - mysql
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  default:
+    name: pulse_mates_network

@@ -1,0 +1,86 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String
+  age       Int?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relationships (example)
+  posts     Post[]
+  profile   Profile?
+
+  @@map("users")
+}
+
+model Profile {
+  id     Int     @id @default(autoincrement())
+  bio    String?
+  avatar String?
+  userId Int     @unique @map("user_id")
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String?  @db.Text
+  published Boolean  @default(false)
+  authorId  Int      @map("author_id")
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("posts")
+}
+
+// PulseMates specific models (healthcare/fitness related)
+model HealthMetric {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  type      MetricType
+  value     Float
+  unit      String
+  recordedAt DateTime @default(now()) @map("recorded_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("health_metrics")
+}
+
+model WorkoutSession {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  name        String
+  description String?  @db.Text
+  duration    Int      // minutes
+  calories    Int?
+  startedAt   DateTime @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("workout_sessions")
+}
+
+enum MetricType {
+  WEIGHT
+  HEIGHT
+  BLOOD_PRESSURE
+  HEART_RATE
+  STEPS
+  CALORIES_BURNED
+  SLEEP_HOURS
+}

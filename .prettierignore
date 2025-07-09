@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Build outputs
+dist/
+build/
+.expo/
+
+# Prisma generated files
+apps/server/prisma/migrations/
+apps/server/generated/
+
+# Auto-generated files
+*.d.ts
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db 
