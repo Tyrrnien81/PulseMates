@@ -1,5 +1,11 @@
-import { useState, useRef } from 'react';
-import { Audio } from 'expo-audio';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  useAudioRecorder,
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioRecorderState,
+} from 'expo-audio';
 
 export interface AudioRecordingHook {
   isRecording: boolean;
@@ -13,20 +19,42 @@ export interface AudioRecordingHook {
 }
 
 export function useAudioRecording(): AudioRecordingHook {
-  const [isRecording, setIsRecording] = useState(false);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(audioRecorder);
+
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [recordingUri, setRecordingUri] = useState<string | null>(null);
   const [hasPermissions, setHasPermissions] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const recordingRef = useRef<Audio.Recording | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const requestPermissions = async (): Promise<boolean> => {
+  // Initialize permissions and audio mode
+  useEffect(() => {
+    (async () => {
+      try {
+        const status = await AudioModule.requestRecordingPermissionsAsync();
+        setHasPermissions(status.granted);
+
+        if (!status.granted) {
+          setError('Microphone permission is required to record audio');
+        }
+
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          allowsRecording: true,
+        });
+      } catch (err) {
+        setError('Failed to initialize audio recording');
+      }
+    })();
+  }, []);
+
+  const requestPermissions = useCallback(async (): Promise<boolean> => {
     try {
       setError(null);
-      const { status } = await Audio.requestPermissionsAsync();
-      const granted = status === 'granted';
+      const status = await AudioModule.requestRecordingPermissionsAsync();
+      const granted = status.granted;
       setHasPermissions(granted);
 
       if (!granted) {
@@ -38,9 +66,9 @@ export function useAudioRecording(): AudioRecordingHook {
       setError('Failed to request microphone permissions');
       return false;
     }
-  };
+  }, []);
 
-  const startRecording = async (): Promise<boolean> => {
+  const startRecording = useCallback(async (): Promise<boolean> => {
     try {
       setError(null);
 
@@ -50,44 +78,10 @@ export function useAudioRecording(): AudioRecordingHook {
         if (!granted) return false;
       }
 
-      // Configure audio mode for recording
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
+      // Prepare and start recording
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
 
-      // Recording options for MP3 format
-      const recordingOptions = {
-        android: {
-          extension: '.mp3',
-          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
-          audioEncoder: Audio.AndroidAudioEncoder.AAC,
-          sampleRate: 44100,
-          numberOfChannels: 1,
-          bitRate: 128000,
-        },
-        ios: {
-          extension: '.mp3',
-          outputFormat: Audio.IOSOutputFormat.MPEG4AAC,
-          audioQuality: Audio.IOSAudioQuality.HIGH,
-          sampleRate: 44100,
-          numberOfChannels: 1,
-          bitRate: 128000,
-          linearPCMBitDepth: 16,
-          linearPCMIsBigEndian: false,
-          linearPCMIsFloat: false,
-        },
-        web: {
-          mimeType: 'audio/mp3',
-          bitsPerSecond: 128000,
-        },
-      };
-
-      // Create and start recording
-      const { recording } = await Audio.Recording.createAsync(recordingOptions);
-      recordingRef.current = recording;
-
-      setIsRecording(true);
       setRecordingDuration(0);
       setRecordingUri(null);
 
@@ -101,13 +95,13 @@ export function useAudioRecording(): AudioRecordingHook {
       setError('Failed to start recording');
       return false;
     }
-  };
+  }, [hasPermissions, requestPermissions, audioRecorder]);
 
-  const stopRecording = async (): Promise<string | null> => {
+  const stopRecording = useCallback(async (): Promise<string | null> => {
     try {
       setError(null);
 
-      if (!recordingRef.current || !isRecording) {
+      if (!recorderState.isRecording) {
         return null;
       }
 
@@ -118,31 +112,21 @@ export function useAudioRecording(): AudioRecordingHook {
       }
 
       // Stop recording
-      await recordingRef.current.stopAndUnloadAsync();
-      setIsRecording(false);
+      await audioRecorder.stop();
 
       // Get recording URI
-      const uri = recordingRef.current.getURI();
+      const uri = audioRecorder.uri;
       setRecordingUri(uri);
-
-      // Clear recording reference
-      recordingRef.current = null;
-
-      // Reset audio mode
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-      });
 
       return uri;
     } catch (err) {
       setError('Failed to stop recording');
-      setIsRecording(false);
       return null;
     }
-  };
+  }, [recorderState.isRecording, audioRecorder]);
 
   return {
-    isRecording,
+    isRecording: recorderState.isRecording,
     recordingDuration,
     recordingUri,
     startRecording,

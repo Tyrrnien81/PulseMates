@@ -300,15 +300,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (result.success && result.data) {
         dispatch({ type: 'UPLOAD_SUCCESS', payload: result.data });
 
-        // If we have complete data, navigate to results
+        // Always navigate to results after successful upload
+        dispatch({ type: 'NAVIGATE_TO', payload: 'results' });
+
+        // If we don't have complete data, set processing loading state
         if (
-          result.data.transcript &&
-          result.data.sentiment &&
-          result.data.coaching
+          !result.data.transcript ||
+          !result.data.sentiment ||
+          !result.data.coaching
         ) {
-          dispatch({ type: 'NAVIGATE_TO', payload: 'results' });
-        } else {
-          // Start polling for processing completion
           dispatch({
             type: 'SET_LOADING',
             payload: { type: 'processing', loading: true },

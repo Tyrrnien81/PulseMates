@@ -122,7 +122,7 @@ export function HomeScreen() {
             title="🎤 Start Mental Check-in"
             onPress={handleStartRecording}
             size="large"
-            disabled={!state.apiHealth.isHealthy || state.loading.health}
+            //disabled={!state.apiHealth.isHealthy || state.loading.health}
             style={styles.startButton}
           />
 
