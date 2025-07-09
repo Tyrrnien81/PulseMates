@@ -47,5 +47,11 @@
     "*.{json,md,yml,yaml}": [
       "prettier --write"
     ]
+  },
+  "dependencies": {
+    "@google-cloud/text-to-speech": "^6.1.0",
+    "assemblyai": "^4.14.0",
+    "axios": "^1.10.0",
+    "openai": "^5.8.3"
   }
 }

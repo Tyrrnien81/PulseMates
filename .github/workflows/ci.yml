@@ -33,7 +33,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
       - name: Enable pnpm
         run: corepack enable
@@ -58,7 +57,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Lint check
         run: pnpm lint:check
@@ -83,7 +82,7 @@ jobs:
         run: pnpm --filter server test
 
       - name: Run mobile tests
-        run: pnpm --filter mobile test --watchAll=false
+        run: pnpm --filter mobile test:ci
 
   build:
     name: Build
@@ -98,7 +97,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
       - name: Enable pnpm
         run: corepack enable
@@ -110,7 +108,7 @@ jobs:
           run_install: false
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build server
         run: pnpm --filter server build

@@ -83,3 +83,20 @@ temp/
 
 # ESLint cache
 .eslintcache
+
+# Environment and sensitive files
+.env
+*.json.backup
+*tts*.json
+google-cloud-*.json
+
+# Development tools
+.cursor/
+.cursorindexingignore
+.specstory/
+
+# Test files (temporary)
+test-*.js
+
+# Package locks (use pnpm-lock.yaml instead)
+package-lock.json
