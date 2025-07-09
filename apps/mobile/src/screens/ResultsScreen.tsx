@@ -13,6 +13,13 @@ import { typography } from '../constants/Typography';
 import { spacing, borderRadius } from '../constants/Layout';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import {
+  TranscriptSkeleton,
+  SentimentSkeleton,
+  CoachingSkeleton,
+} from '../components/SkeletonLoader';
+import { TranscriptDisplay } from '../components/TranscriptDisplay';
+import { ConfidenceIndicator } from '../components/ConfidenceIndicator';
 import { useAppContext } from '../context/AppContext';
 
 export function ResultsScreen() {
@@ -32,21 +39,51 @@ export function ResultsScreen() {
       <SafeAreaView style={styles.container}>
         <StatusBar style="dark" backgroundColor={colors.background} />
 
-        <View style={styles.content}>
-          <Card variant="elevated" padding="xl" style={styles.loadingCard}>
-            <Text style={styles.loadingTitle}>
-              {state.loading.upload ? '📤 Uploading...' : '🤖 Processing...'}
-            </Text>
-            <Text style={styles.loadingText}>
-              {state.loading.upload
-                ? 'Uploading your recording securely'
-                : 'Analyzing your voice and generating insights'}
-            </Text>
-            <Text style={styles.loadingSubtext}>
-              This may take a few moments
-            </Text>
-          </Card>
+        {/* Header */}
+        <View style={styles.header}>
+          <Button
+            title="← Back"
+            onPress={goHome}
+            variant="ghost"
+            size="small"
+          />
+          <Text style={styles.headerTitle}>
+            {state.loading.upload ? 'Uploading...' : 'Processing...'}
+          </Text>
+          <View style={styles.headerSpacer} />
         </View>
+
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.content}>
+            {/* Status Message */}
+            <Card variant="outlined" padding="lg" style={styles.statusCard}>
+              <Text style={styles.statusTitle}>
+                {state.loading.upload ? '📤 Uploading...' : '🤖 Processing...'}
+              </Text>
+              <Text style={styles.statusText}>
+                {state.loading.upload
+                  ? 'Uploading your recording securely'
+                  : 'Analyzing your voice and generating insights'}
+              </Text>
+            </Card>
+
+            {/* Skeleton Loaders */}
+            <Card variant="elevated" style={styles.skeletonCard}>
+              <TranscriptSkeleton />
+            </Card>
+
+            <Card variant="elevated" style={styles.skeletonCard}>
+              <SentimentSkeleton />
+            </Card>
+
+            <Card variant="elevated" style={styles.skeletonCard}>
+              <CoachingSkeleton />
+            </Card>
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -75,7 +112,7 @@ export function ResultsScreen() {
 
         <View style={styles.content}>
           <Card variant="outlined" padding="xl" style={styles.errorCard}>
-            <Text style={styles.errorTitle}>❌ Upload Failed</Text>
+            <Text style={styles.errorTitle}>Upload Failed</Text>
             <Text style={styles.errorText}>{state.error}</Text>
             <View style={styles.errorActions}>
               <Button
@@ -110,7 +147,7 @@ export function ResultsScreen() {
 
         <View style={styles.content}>
           <Card variant="outlined" padding="xl" style={styles.noDataCard}>
-            <Text style={styles.noDataTitle}>📝 No Results Yet</Text>
+            <Text style={styles.noDataTitle}>No Results Yet</Text>
             <Text style={styles.noDataText}>
               Complete a check-in recording to see your personalized results and
               coaching.
@@ -156,7 +193,7 @@ export function ResultsScreen() {
             padding="lg"
             style={styles.recordingInfoCard}
           >
-            <Text style={styles.cardTitle}>📊 Session Summary</Text>
+            <Text style={styles.cardTitle}>Session Summary</Text>
             <View style={styles.recordingInfo}>
               <Text style={styles.infoText}>
                 Duration: {Math.floor(recordingData.duration / 60)}:
@@ -172,20 +209,21 @@ export function ResultsScreen() {
 
           {/* Transcript */}
           {checkinData.transcript && (
-            <Card variant="elevated" padding="lg" style={styles.transcriptCard}>
-              <Text style={styles.cardTitle}>💬 What You Shared</Text>
-              <Text style={styles.transcriptText}>
-                &ldquo;{checkinData.transcript}&rdquo;
-              </Text>
-            </Card>
+            <TranscriptDisplay
+              transcript={checkinData.transcript}
+              confidence={0.85}
+              enableTypewriter={false}
+              showDetailedConfidence={true}
+            />
           )}
 
           {/* Sentiment Analysis */}
           {checkinData.sentiment && (
             <Card variant="elevated" padding="lg" style={styles.sentimentCard}>
-              <Text style={styles.cardTitle}>🎭 Mood Analysis</Text>
+              <Text style={styles.cardTitle}>Mood Analysis</Text>
               <View style={styles.sentimentContainer}>
                 <Text style={styles.sentimentLabel}>
+                  {getSentimentEmoji(checkinData.sentiment.score)}{' '}
                   {checkinData.sentiment.label}
                 </Text>
                 <View style={styles.sentimentMeter}>
@@ -193,7 +231,7 @@ export function ResultsScreen() {
                     style={[
                       styles.sentimentFill,
                       {
-                        width: `${Math.round(checkinData.sentiment.confidence * 100)}%`,
+                        width: `${Math.round(checkinData.sentiment.score * 100)}%`,
                         backgroundColor: getSentimentColor(
                           checkinData.sentiment.score
                         ),
@@ -202,10 +240,16 @@ export function ResultsScreen() {
                   />
                 </View>
                 <Text style={styles.sentimentScore}>
-                  {Math.round(checkinData.sentiment.confidence * 100)}%
-                  confidence
+                  Mood Score: {Math.round(checkinData.sentiment.score * 100)}%
                 </Text>
               </View>
+
+              {/* Enhanced Confidence Visualization */}
+              <ConfidenceIndicator
+                confidence={checkinData.sentiment.confidence}
+                type="sentiment"
+                style={styles.sentimentConfidence}
+              />
             </Card>
           )}
 
@@ -219,7 +263,7 @@ export function ResultsScreen() {
                   padding="lg"
                   style={styles.motivationCard}
                 >
-                  <Text style={styles.cardTitle}>💪 Personal Message</Text>
+                  <Text style={styles.cardTitle}>Personal Message</Text>
                   <Text style={styles.motivationText}>
                     {checkinData.coaching.motivationalMessage}
                   </Text>
@@ -234,7 +278,7 @@ export function ResultsScreen() {
                   style={styles.exerciseCard}
                 >
                   <Text style={styles.cardTitle}>
-                    🫁 {checkinData.coaching.breathingExercise.title}
+                    {checkinData.coaching.breathingExercise.title}
                   </Text>
                   <Text style={styles.exerciseDescription}>
                     Duration: {checkinData.coaching.breathingExercise.duration}{' '}
@@ -271,7 +315,7 @@ export function ResultsScreen() {
                   style={styles.exerciseCard}
                 >
                   <Text style={styles.cardTitle}>
-                    🧘 {checkinData.coaching.stretchExercise.title}
+                    {checkinData.coaching.stretchExercise.title}
                   </Text>
                   <View style={styles.exerciseInstructions}>
                     {checkinData.coaching.stretchExercise.instructions.map(
@@ -304,7 +348,7 @@ export function ResultsScreen() {
                     padding="lg"
                     style={styles.resourcesCard}
                   >
-                    <Text style={styles.cardTitle}>📚 Helpful Resources</Text>
+                    <Text style={styles.cardTitle}>Helpful Resources</Text>
                     {checkinData.coaching.resources.map((resource, index) => (
                       <View key={index} style={styles.resourceItem}>
                         <Text style={styles.resourceTitle}>
@@ -376,6 +420,14 @@ function getSentimentColor(score: number): string {
   if (score >= 0.6) return colors.success;
   if (score >= 0.4) return colors.warning;
   return colors.info;
+}
+
+function getSentimentEmoji(score: number): string {
+  if (score >= 0.8) return '😊';
+  if (score >= 0.6) return '🙂';
+  if (score >= 0.4) return '😐';
+  if (score >= 0.2) return '😞';
+  return '😢';
 }
 
 const styles = StyleSheet.create({
@@ -456,6 +508,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
+  headerSpacer: {
+    width: spacing.xxl,
+  },
   headerTitle: {
     ...typography.h3,
     color: colors.text,
@@ -470,26 +525,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: spacing.xs,
   },
-  loadingCard: {
-    alignItems: 'center',
-    marginTop: spacing.xxl,
-  },
-  loadingSubtext: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  loadingText: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-    textAlign: 'center',
-  },
-  loadingTitle: {
-    ...typography.h2,
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
+
   motivationCard: {
     backgroundColor: colors.surfaceLight,
     borderLeftColor: colors.primary,
@@ -554,6 +590,9 @@ const styles = StyleSheet.create({
   sentimentCard: {
     marginBottom: spacing.lg,
   },
+  sentimentConfidence: {
+    marginTop: spacing.md,
+  },
   sentimentContainer: {
     alignItems: 'center',
   },
@@ -578,14 +617,21 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.textSecondary,
   },
-  transcriptCard: {
-    backgroundColor: colors.surfaceLight,
+  skeletonCard: {
     marginBottom: spacing.lg,
   },
-  transcriptText: {
+  statusCard: {
+    marginBottom: spacing.lg,
+  },
+  statusText: {
     ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  statusTitle: {
+    ...typography.h3,
     color: colors.text,
-    fontStyle: 'italic',
-    lineHeight: 22,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
   },
 });
