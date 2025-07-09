@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
@@ -35,6 +36,10 @@ const limiter = rateLimit({
   },
 });
 app.use(limiter);
+
+// Request logging
+const logFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
+app.use(morgan(logFormat));
 
 // Body parser
 app.use(express.json({ limit: '10mb' }));

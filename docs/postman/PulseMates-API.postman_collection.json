@@ -1,0 +1,378 @@
+{
+  "info": {
+    "name": "PulseMates API Collection",
+    "description": "Complete API testing collection for PulseMates - 24-hour hackathon MVP for mental health voice check-in app",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Set common variables",
+          "pm.environment.set('base_url', 'http://localhost:4000');",
+          "pm.environment.set('timestamp', new Date().toISOString());"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:4000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Checks",
+      "description": "Basic health and status endpoints",
+      "item": [
+        {
+          "name": "Ping - Basic Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ping",
+              "host": ["{{base_url}}"],
+              "path": ["ping"]
+            },
+            "description": "Basic server health check endpoint"
+          },
+          "response": [
+            {
+              "name": "Successful Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/ping",
+                  "host": ["{{base_url}}"],
+                  "path": ["ping"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"pong\": true,\n  \"message\": \"PulseMates API Server is running!\",\n  \"timestamp\": \"2025-01-09T21:41:55.880Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "API Health - Detailed Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "health"]
+            },
+            "description": "Detailed service status and version information"
+          },
+          "response": [
+            {
+              "name": "Healthy Service",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/health",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "health"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"healthy\",\n  \"service\": \"PulseMates API\",\n  \"version\": \"1.0.0\",\n  \"timestamp\": \"2025-01-09T21:41:55.880Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Voice Check-in",
+      "description": "Core voice check-in functionality",
+      "item": [
+        {
+          "name": "Audio Upload - Voice Check-in",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "multipart/form-data",
+                "disabled": true
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "audio",
+                  "type": "file",
+                  "src": "",
+                  "description": "Audio file (wav/mp3/m4a, ≤10MB, ≤60s)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/checkin",
+              "host": ["{{base_url}}"],
+              "path": ["api", "checkin"]
+            },
+            "description": "Upload audio file for voice check-in processing\n\n**Requirements:**\n- File format: wav, mp3, m4a\n- Max size: 10MB\n- Max duration: 60 seconds\n\n**Response includes:**\n- Transcript from AssemblyAI\n- Sentiment analysis\n- AI coaching recommendations\n- Audio response URL from Google TTS"
+          },
+          "response": [
+            {
+              "name": "Successful Processing",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "audio",
+                      "type": "file",
+                      "src": "sample.wav"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/checkin",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "checkin"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"transcript\": \"I'm feeling a bit stressed about my upcoming exams\",\n    \"sentiment\": {\n      \"score\": 0.65,\n      \"label\": \"negative\",\n      \"confidence\": 0.82\n    },\n    \"coaching\": {\n      \"breathingExercise\": {\n        \"title\": \"4-7-8 Breathing Technique\",\n        \"instructions\": [\n          \"Inhale through your nose for 4 counts\",\n          \"Hold your breath for 7 counts\",\n          \"Exhale through your mouth for 8 counts\",\n          \"Repeat 4 times\"\n        ],\n        \"duration\": 120\n      },\n      \"stretchExercise\": {\n        \"title\": \"Neck and Shoulder Release\",\n        \"instructions\": [\n          \"Slowly roll your shoulders backward 5 times\",\n          \"Gently tilt your head to the right, hold 15 seconds\",\n          \"Repeat on the left side\"\n        ]\n      },\n      \"resources\": [\n        {\n          \"title\": \"University Counseling Center\",\n          \"description\": \"Free confidential counseling services\",\n          \"url\": \"https://university.edu/counseling\",\n          \"category\": \"counseling\"\n        }\n      ],\n      \"motivationalMessage\": \"You're taking a great step by checking in with yourself. Remember, stress about exams is normal, and you have the tools to manage it effectively.\"\n    },\n    \"audioUrl\": \"https://storage.googleapis.com/tts-audio/coaching-response-12345.mp3\"\n  },\n  \"processingTime\": 2450,\n  \"error\": null\n}"
+            },
+            {
+              "name": "File Too Large",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "audio",
+                      "type": "file",
+                      "src": "large_file.wav"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/checkin",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "checkin"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"error\": \"File size exceeds maximum limit of 10MB\",\n  \"processingTime\": 50\n}"
+            },
+            {
+              "name": "Invalid File Format",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "audio",
+                      "type": "file",
+                      "src": "document.pdf"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/checkin",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "checkin"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"error\": \"Invalid file format. Supported formats: wav, mp3, m4a\",\n  \"processingTime\": 25\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Example Endpoints",
+      "description": "Example endpoints for testing server functionality",
+      "item": [
+        {
+          "name": "Create User - Example",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"age\": 22\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users"]
+            },
+            "description": "Example user creation endpoint with validation"
+          },
+          "response": [
+            {
+              "name": "User Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"age\": 22\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/users",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "users"]
+                }
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"id\": 1234,\n    \"name\": \"Test User\",\n    \"email\": \"test@example.com\",\n    \"age\": 22,\n    \"createdAt\": \"2025-01-09T21:41:55.880Z\"\n  },\n  \"message\": \"User created successfully\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Error Testing",
+      "description": "Test error handling and edge cases",
+      "item": [
+        {
+          "name": "404 - Route Not Found",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/nonexistent",
+              "host": ["{{base_url}}"],
+              "path": ["api", "nonexistent"]
+            },
+            "description": "Test 404 error handling for non-existent routes"
+          },
+          "response": [
+            {
+              "name": "Route Not Found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/api/nonexistent",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "nonexistent"]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"success\": false,\n  \"error\": \"Route not found\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Rate Limit Test",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/ping",
+              "host": ["{{base_url}}"],
+              "path": ["ping"]
+            },
+            "description": "Send multiple requests to test rate limiting (100 requests per 15 minutes)"
+          }
+        }
+      ]
+    }
+  ]
+}

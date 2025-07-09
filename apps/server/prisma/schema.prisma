@@ -75,6 +75,19 @@ model WorkoutSession {
   @@map("workout_sessions")
 }
 
+// PulseMates Mental Health Check-in Model
+model StressLog {
+  id        Int      @id @default(autoincrement())
+  uuid      String   @db.VarChar(36)      // Anonymous session UUID
+  score     Float                         // Sentiment score (0-1)
+  label     String   @db.VarChar(16)      // Sentiment label: positive, negative, neutral
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([uuid])
+  @@index([createdAt])
+  @@map("stress_logs")
+}
+
 enum MetricType {
   WEIGHT
   HEIGHT
