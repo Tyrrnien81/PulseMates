@@ -201,6 +201,95 @@ export function SentimentMeter({
 }
 
 // Compact version for smaller spaces
+// Simple progress bar version for cleaner UI
+export function SimpleSentimentBar({
+  score,
+  confidence,
+  label: _label,
+  customColors,
+  style,
+}: Pick<
+  SentimentMeterProps,
+  'score' | 'confidence' | 'label' | 'customColors' | 'style'
+>) {
+  const progressAnimation = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(progressAnimation, {
+      toValue: score,
+      duration: 1500,
+      useNativeDriver: false,
+    }).start();
+  }, [score, progressAnimation]);
+
+  const getSentimentColor = (sentimentScore: number) => {
+    if (customColors) {
+      if (sentimentScore >= 0.7) return customColors.primary;
+      if (sentimentScore >= 0.4) return customColors.secondary;
+      return colors.info;
+    }
+
+    if (sentimentScore >= 0.7) return colors.success;
+    if (sentimentScore >= 0.4) return colors.warning;
+    return colors.info;
+  };
+
+  const getSentimentLevel = (sentimentScore: number) => {
+    if (sentimentScore >= 0.8) return 'Very Positive';
+    if (sentimentScore >= 0.6) return 'Positive';
+    if (sentimentScore >= 0.4) return 'Neutral';
+    if (sentimentScore >= 0.2) return 'Negative';
+    return 'Very Negative';
+  };
+
+  const sentimentColor = getSentimentColor(score);
+  const sentimentLevel = getSentimentLevel(score);
+
+  const animatedWidth = progressAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  });
+
+  return (
+    <View style={[styles.simpleContainer, style]}>
+      <View style={styles.simpleHeader}>
+        <Text style={[styles.simpleSentimentText, { color: sentimentColor }]}>
+          {sentimentLevel}
+        </Text>
+        <Text style={[styles.simpleScoreText, { color: sentimentColor }]}>
+          {Math.round(score * 100)}%
+        </Text>
+      </View>
+
+      <View
+        style={[
+          styles.progressBarBackground,
+          { backgroundColor: customColors?.border || colors.borderLight },
+        ]}
+      >
+        <Animated.View
+          style={[
+            styles.progressBarFill,
+            {
+              backgroundColor: sentimentColor,
+              width: animatedWidth,
+            },
+          ]}
+        />
+      </View>
+
+      <Text
+        style={[
+          styles.simpleConfidenceText,
+          { color: customColors?.textSecondary || colors.textSecondary },
+        ]}
+      >
+        Analysis confidence: {Math.round(confidence * 100)}%
+      </Text>
+    </View>
+  );
+}
+
 export function CompactSentimentMeter({
   score,
   confidence,
@@ -265,9 +354,41 @@ const styles = StyleSheet.create({
   meterContainer: {
     position: 'relative',
   },
+  progressBarBackground: {
+    borderRadius: 8,
+    height: 8,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  progressBarFill: {
+    borderRadius: 8,
+    height: '100%',
+  },
   scoreText: {
     ...typography.h2,
     fontWeight: 'bold',
+  },
+  simpleConfidenceText: {
+    ...typography.bodySmall,
+    marginTop: spacing.sm,
+    textAlign: 'center',
+  },
+  simpleContainer: {
+    width: '100%',
+  },
+  simpleHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  simpleScoreText: {
+    ...typography.h4,
+    fontWeight: 'bold',
+  },
+  simpleSentimentText: {
+    ...typography.h4,
+    fontWeight: '600',
   },
   svg: {
     transform: [{ rotate: '180deg' }], // Start from top

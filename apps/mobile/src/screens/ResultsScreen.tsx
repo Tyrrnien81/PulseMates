@@ -1,14 +1,6 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import * as Linking from 'expo-linking';
 import { colors } from '../constants/Colors';
 import { typography } from '../constants/Typography';
 import { spacing, borderRadius } from '../constants/Layout';
@@ -24,8 +16,8 @@ import {
   CoachingSkeleton,
 } from '../components/SkeletonLoader';
 import { TranscriptDisplay } from '../components/TranscriptDisplay';
-import { SentimentMeter } from '../components/SentimentMeter';
-import { BreathingGuide } from '../components/BreathingGuide';
+import { SimpleSentimentBar } from '../components/SentimentMeter';
+import { CoachingCards } from '../components/CoachingCards';
 import { useAppContext } from '../context/AppContext';
 
 export function ResultsScreen() {
@@ -194,7 +186,7 @@ export function ResultsScreen() {
   }
 
   // Get data from context
-  const { checkinData, recordingData } = state;
+  const { checkinData } = state;
   const hasData =
     checkinData.sessionId &&
     (checkinData.transcript || checkinData.sentiment || checkinData.coaching);
@@ -265,26 +257,6 @@ export function ResultsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={themedStyles.themedContent}>
-          {/* Recording Info */}
-          <Card
-            variant="outlined"
-            padding="lg"
-            style={styles.recordingInfoCard}
-          >
-            <Text style={styles.cardTitle}>Session Summary</Text>
-            <View style={styles.recordingInfo}>
-              <Text style={styles.infoText}>
-                Duration: {Math.floor(recordingData.duration / 60)}:
-                {(recordingData.duration % 60).toString().padStart(2, '0')}
-              </Text>
-              {recordingData.timestamp && (
-                <Text style={styles.infoText}>
-                  Date: {new Date(recordingData.timestamp).toLocaleDateString()}
-                </Text>
-              )}
-            </View>
-          </Card>
-
           {/* Transcript */}
           {checkinData.transcript && (
             <TranscriptDisplay
@@ -292,6 +264,7 @@ export function ResultsScreen() {
               confidence={0.85}
               enableTypewriter={false}
               showDetailedConfidence={true}
+              audioUrl={checkinData.audioUrl || undefined}
             />
           )}
 
@@ -304,12 +277,10 @@ export function ResultsScreen() {
             >
               <Text style={themedStyles.themedCardTitle}>Mood Analysis</Text>
 
-              <SentimentMeter
+              <SimpleSentimentBar
                 score={checkinData.sentiment.score}
                 confidence={checkinData.sentiment.confidence}
                 label={checkinData.sentiment.label}
-                size={140}
-                showDetails={true}
                 customColors={{
                   primary: theme.primary,
                   secondary: theme.secondary,
@@ -324,132 +295,10 @@ export function ResultsScreen() {
 
           {/* Coaching Content */}
           {checkinData.coaching && (
-            <>
-              {/* Motivational Message */}
-              {checkinData.coaching.motivationalMessage && (
-                <Card
-                  variant="default"
-                  padding="lg"
-                  style={themedStyles.themedMotivationCard}
-                >
-                  <Text style={themedStyles.themedCardTitle}>
-                    Personal Message
-                  </Text>
-                  <Text style={styles.motivationText}>
-                    {checkinData.coaching.motivationalMessage}
-                  </Text>
-                </Card>
-              )}
-
-              {/* Emergency Contact */}
-              <Card variant="outlined" padding="lg" style={styles.contactCard}>
-                <Text style={themedStyles.themedCardTitle}>Need Support?</Text>
-                <View style={styles.contactItem}>
-                  <Text style={[styles.contactTitle, themedStyles.themedText]}>
-                    Campus Help
-                  </Text>
-                  <Text
-                    style={[
-                      styles.contactDescription,
-                      themedStyles.themedSecondaryText,
-                    ]}
-                  >
-                    24/7 mental health support for students
-                  </Text>
-                  <Button
-                    title="Call Now"
-                    onPress={async () => {
-                      const phoneNumber = 'tel:6082571102';
-                      const displayNumber = '(608) 257-1102';
-
-                      // Check if the device can make phone calls
-                      const canOpenURL = await Linking.canOpenURL(phoneNumber);
-
-                      if (!canOpenURL) {
-                        Alert.alert(
-                          'Phone Not Available',
-                          'This device cannot make phone calls. Please call ' +
-                            displayNumber +
-                            ' directly.',
-                          [{ text: 'OK' }]
-                        );
-                        return;
-                      }
-
-                      Alert.alert(
-                        'Call Campus Help',
-                        `This will call Campus Help at ${displayNumber}`,
-                        [
-                          { text: 'Cancel', style: 'destructive' },
-                          {
-                            text: 'Call',
-                            onPress: async () => {
-                              try {
-                                await Linking.openURL(phoneNumber);
-                              } catch (error) {
-                                Alert.alert(
-                                  'Error',
-                                  'Unable to make phone call. Please dial ' +
-                                    displayNumber +
-                                    ' manually.',
-                                  [{ text: 'OK' }]
-                                );
-                              }
-                            },
-                          },
-                        ]
-                      );
-                    }}
-                    variant="primary"
-                    size="medium"
-                    style={styles.contactButton}
-                  />
-                </View>
-              </Card>
-            </>
-          )}
-
-          {/* Breathing Exercise Guide */}
-          {checkinData.sentiment && (
-            <Card variant="elevated" padding="lg" style={styles.breathingCard}>
-              <Text style={themedStyles.themedCardTitle}>
-                Breathing Exercise
-              </Text>
-              <Text
-                style={[
-                  styles.breathingDescription,
-                  themedStyles.themedSecondaryText,
-                ]}
-              >
-                {checkinData.sentiment.score < 0.4
-                  ? 'Take a moment to calm your mind with guided breathing'
-                  : checkinData.sentiment.score < 0.7
-                    ? 'Center yourself with mindful breathing'
-                    : 'Energize your positive mood with rhythmic breathing'}
-              </Text>
-              <BreathingGuide sentimentScore={checkinData.sentiment.score} />
-            </Card>
-          )}
-
-          {/* Audio Playback */}
-          {checkinData.audioUrl && (
-            <Card variant="elevated" padding="lg" style={styles.audioCard}>
-              <Text style={styles.cardTitle}>🎵 Your Coaching Audio</Text>
-              <Text style={styles.audioDescription}>
-                Listen to your personalized coaching message
-              </Text>
-              <Button
-                title="▶ Play Coaching"
-                onPress={() =>
-                  Alert.alert(
-                    'Audio Player',
-                    'Audio playback feature coming soon!'
-                  )
-                }
-                variant="primary"
-                style={styles.audioButton}
-              />
-            </Card>
+            <CoachingCards
+              coaching={checkinData.coaching}
+              sentimentScore={checkinData.sentiment?.score}
+            />
           )}
 
           {/* Actions */}
@@ -475,55 +324,6 @@ const styles = StyleSheet.create({
   actionsContainer: {
     gap: spacing.md,
     marginTop: spacing.lg,
-  },
-  audioButton: {
-    alignSelf: 'center',
-  },
-  audioCard: {
-    backgroundColor: colors.surfaceLight,
-    marginBottom: spacing.lg,
-  },
-  audioDescription: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.md,
-    textAlign: 'center',
-  },
-  breathingCard: {
-    backgroundColor: colors.surfaceLight,
-    marginBottom: spacing.lg,
-  },
-  breathingDescription: {
-    ...typography.body,
-    marginBottom: spacing.md,
-    textAlign: 'center',
-  },
-
-  cardTitle: {
-    ...typography.h3,
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  contactButton: {
-    alignSelf: 'center',
-    marginTop: spacing.md,
-  },
-  contactCard: {
-    marginBottom: spacing.lg,
-  },
-  contactDescription: {
-    ...typography.body,
-    marginBottom: spacing.sm,
-    textAlign: 'center',
-  },
-  contactItem: {
-    alignItems: 'center',
-  },
-  contactTitle: {
-    ...typography.h4,
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-    textAlign: 'center',
   },
   container: {
     backgroundColor: colors.background,
@@ -561,16 +361,6 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: spacing.xxl,
   },
-  infoText: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
-  motivationText: {
-    ...typography.body,
-    color: colors.text,
-    lineHeight: 22,
-    textAlign: 'center',
-  },
   noDataButton: {
     minWidth: 200,
   },
@@ -588,12 +378,6 @@ const styles = StyleSheet.create({
     ...typography.h2,
     color: colors.text,
     marginBottom: spacing.md,
-  },
-  recordingInfo: {
-    gap: spacing.xs,
-  },
-  recordingInfoCard: {
-    marginBottom: spacing.lg,
   },
   scrollView: {
     flex: 1,
