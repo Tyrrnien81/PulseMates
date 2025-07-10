@@ -7,7 +7,6 @@ import React, {
   ReactNode,
 } from 'react';
 import { apiService, CheckinResponse } from '../services/api';
-import { enhanceCoachingData } from '../utils/dummyCoachingData';
 
 export interface AppState {
   currentScreen: 'home' | 'recording' | 'results';
@@ -230,10 +229,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
           sessionId: action.payload.data.sessionId,
           transcript: action.payload.data.transcript,
           sentiment: action.payload.data.sentiment,
-          coaching: enhanceCoachingData(
-            action.payload.data.coaching,
-            action.payload.data.sentiment?.score
-          ),
+          coaching: action.payload.data.coaching,
           audioUrl: action.payload.data.audioUrl || null,
           audioText: action.payload.data.audioText || null,
           audioMetadata: action.payload.data.audioMetadata || null,
@@ -260,10 +256,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
           sessionId: action.payload.sessionId,
           transcript: action.payload.transcript,
           sentiment: action.payload.sentiment,
-          coaching: enhanceCoachingData(
-            action.payload.coaching,
-            action.payload.sentiment?.score
-          ),
+          coaching: action.payload.coaching,
           audioUrl: action.payload.audioUrl || null,
           audioText: action.payload.audioText || null,
           audioMetadata: action.payload.audioMetadata || null,
