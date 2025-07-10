@@ -196,7 +196,7 @@ export function ResultsScreen() {
   // Get data from context
   const { checkinData, recordingData } = state;
   const hasData =
-    checkinData.id &&
+    checkinData.sessionId &&
     (checkinData.transcript || checkinData.sentiment || checkinData.coaching);
 
   if (!hasData) {

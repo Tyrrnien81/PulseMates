@@ -8,73 +8,6 @@ import React, {
 } from 'react';
 import { apiService, CheckinResponse } from '../services/api';
 
-// Mock data for development/demo purposes
-const getMockCheckinData = (): CheckinResponse => {
-  const mockVariations = [
-    {
-      id: `mock_${Date.now()}`,
-      transcript:
-        "I'm feeling really good today. Had a great workout this morning and feeling energized for the day ahead. Looking forward to tackling my projects.",
-      sentiment: {
-        score: 0.85,
-        label: 'Positive',
-        confidence: 0.92,
-      },
-    },
-    {
-      id: `mock_${Date.now()}`,
-      transcript:
-        "It's been a challenging week with lots of deadlines. Feeling a bit overwhelmed but trying to stay focused and take things one step at a time.",
-      sentiment: {
-        score: 0.35,
-        label: 'Stressed',
-        confidence: 0.78,
-      },
-    },
-    {
-      id: `mock_${Date.now()}`,
-      transcript:
-        'Had a regular day at work. Nothing particularly exciting or stressful. Just going through the motions and feeling pretty neutral about everything.',
-      sentiment: {
-        score: 0.55,
-        label: 'Neutral',
-        confidence: 0.65,
-      },
-    },
-  ];
-
-  const variation =
-    mockVariations[Math.floor(Math.random() * mockVariations.length)];
-
-  return {
-    ...variation,
-    coaching: {
-      breathingExercise: {
-        title: 'Deep Breathing Exercise',
-        instructions: [
-          'Inhale slowly through your nose for 4 seconds',
-          'Hold your breath for 7 seconds',
-          'Exhale slowly through your mouth for 8 seconds',
-          'Repeat 3-4 times',
-        ],
-        duration: 5,
-      },
-      stretchExercise: {
-        title: 'Neck and Shoulder Release',
-        instructions: [
-          'Gently roll your shoulders backward 5 times',
-          'Slowly turn your head left and right',
-          'Tilt your head to each shoulder and hold for 10 seconds',
-          'Take deep breaths throughout',
-        ],
-      },
-      resources: [],
-      motivationalMessage:
-        "Remember, it's okay to feel whatever you're feeling. Every emotion is valid, and reaching out for support is a sign of strength.",
-    },
-  };
-};
-
 export interface AppState {
   currentScreen: 'home' | 'recording' | 'results';
   isRecording: boolean;
@@ -84,7 +17,7 @@ export interface AppState {
     timestamp: string | null;
   };
   checkinData: {
-    id: string | null;
+    sessionId: string | null;
     transcript: string | null;
     sentiment: {
       score: number;
@@ -98,6 +31,11 @@ export interface AppState {
     isHealthy: boolean;
     message: string;
     lastChecked: string | null;
+    detailedStatus?: {
+      status: string;
+      service: string;
+      version: string;
+    };
   };
   loading: {
     health: boolean;
@@ -105,6 +43,8 @@ export interface AppState {
     processing: boolean;
   };
   error: string | null;
+  processingTime: number | null;
+  coachingMode: 'fast' | 'optimized';
 }
 
 export type AppAction =
@@ -117,7 +57,15 @@ export type AppAction =
   | { type: 'RESET_RECORDING' }
   | {
       type: 'SET_HEALTH_STATUS';
-      payload: { isHealthy: boolean; message: string };
+      payload: {
+        isHealthy: boolean;
+        message: string;
+        detailedStatus?: {
+          status: string;
+          service: string;
+          version: string;
+        };
+      };
     }
   | {
       type: 'SET_LOADING';
@@ -126,8 +74,15 @@ export type AppAction =
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'SET_CHECKIN_DATA'; payload: CheckinResponse }
   | { type: 'START_UPLOAD' }
-  | { type: 'UPLOAD_SUCCESS'; payload: CheckinResponse }
-  | { type: 'UPLOAD_ERROR'; payload: string };
+  | {
+      type: 'UPLOAD_SUCCESS';
+      payload: {
+        data: CheckinResponse;
+        processingTime?: number;
+      };
+    }
+  | { type: 'UPLOAD_ERROR'; payload: string }
+  | { type: 'SET_COACHING_MODE'; payload: 'fast' | 'optimized' };
 
 const initialState: AppState = {
   currentScreen: 'home',
@@ -138,7 +93,7 @@ const initialState: AppState = {
     timestamp: null,
   },
   checkinData: {
-    id: null,
+    sessionId: null,
     transcript: null,
     sentiment: null,
     coaching: null,
@@ -155,6 +110,8 @@ const initialState: AppState = {
     processing: false,
   },
   error: null,
+  processingTime: null,
+  coachingMode: 'fast', // Default to fast mode for demos
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -199,13 +156,14 @@ function appReducer(state: AppState, action: AppAction): AppState {
           timestamp: null,
         },
         checkinData: {
-          id: null,
+          sessionId: null,
           transcript: null,
           sentiment: null,
           coaching: null,
           audioUrl: null,
         },
         error: null,
+        processingTime: null,
       };
 
     case 'SET_HEALTH_STATUS':
@@ -215,6 +173,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
           isHealthy: action.payload.isHealthy,
           message: action.payload.message,
           lastChecked: new Date().toISOString(),
+          detailedStatus: action.payload.detailedStatus,
         },
       };
 
@@ -239,6 +198,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
         loading: {
           ...state.loading,
           upload: true,
+          processing: true,
         },
         error: null,
       };
@@ -252,12 +212,13 @@ function appReducer(state: AppState, action: AppAction): AppState {
           processing: false,
         },
         checkinData: {
-          id: action.payload.id,
-          transcript: action.payload.transcript || null,
-          sentiment: action.payload.sentiment || null,
-          coaching: action.payload.coaching || null,
-          audioUrl: action.payload.audioUrl || null,
+          sessionId: action.payload.data.sessionId,
+          transcript: action.payload.data.transcript,
+          sentiment: action.payload.data.sentiment,
+          coaching: action.payload.data.coaching,
+          audioUrl: action.payload.data.audioUrl,
         },
+        processingTime: action.payload.processingTime || null,
         error: null,
       };
 
@@ -276,16 +237,22 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         checkinData: {
-          id: action.payload.id,
-          transcript: action.payload.transcript || null,
-          sentiment: action.payload.sentiment || null,
-          coaching: action.payload.coaching || null,
-          audioUrl: action.payload.audioUrl || null,
+          sessionId: action.payload.sessionId,
+          transcript: action.payload.transcript,
+          sentiment: action.payload.sentiment,
+          coaching: action.payload.coaching,
+          audioUrl: action.payload.audioUrl,
         },
         loading: {
           ...state.loading,
           processing: false,
         },
+      };
+
+    case 'SET_COACHING_MODE':
+      return {
+        ...state,
+        coachingMode: action.payload,
       };
 
     default:
@@ -299,7 +266,9 @@ interface AppContextType {
   actions: {
     checkApiHealth: () => Promise<void>;
     uploadRecording: () => Promise<void>;
+    uploadRecordingWithMode: (mode?: 'fast' | 'optimized') => Promise<void>;
     resetApp: () => void;
+    setCoachingMode: (mode: 'fast' | 'optimized') => void;
   };
 }
 
@@ -315,31 +284,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     try {
-      const result = await apiService.checkHealth();
+      // Check basic health first
+      const basicHealthResult = await apiService.checkHealth();
 
-      if (result.success && result.data) {
-        dispatch({
-          type: 'SET_HEALTH_STATUS',
-          payload: {
-            isHealthy: true,
-            message: result.data.message,
-          },
-        });
-      } else {
-        dispatch({
-          type: 'SET_HEALTH_STATUS',
-          payload: {
-            isHealthy: false,
-            message: result.message || 'Health check failed',
-          },
-        });
+      let isHealthy = false;
+      let message = 'Health check failed';
+      let detailedStatus;
+
+      if (basicHealthResult.success && basicHealthResult.data) {
+        isHealthy = true;
+        message = basicHealthResult.data.message || 'API is healthy';
       }
+
+      // Try to get detailed health info (non-blocking)
+      try {
+        const detailedHealthResult = await apiService.checkDetailedHealth();
+        if (detailedHealthResult.success && detailedHealthResult.data) {
+          detailedStatus = detailedHealthResult.data;
+        }
+      } catch (detailedError) {
+        // Detailed health check failed, but that's okay
+        // eslint-disable-next-line no-console
+        console.log('Detailed health check failed:', detailedError);
+      }
+
+      dispatch({
+        type: 'SET_HEALTH_STATUS',
+        payload: {
+          isHealthy,
+          message,
+          detailedStatus,
+        },
+      });
     } catch (error) {
       dispatch({
         type: 'SET_HEALTH_STATUS',
         payload: {
           isHealthy: false,
-          message: 'Connection failed',
+          message: 'Connection failed - backend may be offline',
         },
       });
     } finally {
@@ -359,44 +341,104 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'START_UPLOAD' });
 
     try {
-      const result = await apiService.submitCheckin(
-        state.recordingData.uri,
-        state.recordingData.duration
-      );
+      const result = await apiService.submitCheckin(state.recordingData.uri);
 
       if (result.success && result.data) {
-        dispatch({ type: 'UPLOAD_SUCCESS', payload: result.data });
+        // Extract processing time from success message
+        const processingTimeMatch = result.message?.match(/(\d+)ms/);
+        const processingTime = processingTimeMatch
+          ? parseInt(processingTimeMatch[1])
+          : undefined;
 
-        // Always navigate to results after successful upload
-        dispatch({ type: 'NAVIGATE_TO', payload: 'results' });
-
-        // If we don't have complete data, set processing loading state
-        if (
-          !result.data.transcript ||
-          !result.data.sentiment ||
-          !result.data.coaching
-        ) {
-          dispatch({
-            type: 'SET_LOADING',
-            payload: { type: 'processing', loading: true },
-          });
-          // TODO: Implement polling for processing status
-        }
-      } else {
-        // For development/demo: provide mock data when API fails
         dispatch({
           type: 'UPLOAD_SUCCESS',
-          payload: getMockCheckinData(),
+          payload: {
+            data: result.data,
+            processingTime,
+          },
         });
+
+        // Navigate to results after successful upload
         dispatch({ type: 'NAVIGATE_TO', payload: 'results' });
+      } else {
+        // Handle API errors with detailed error information
+        const errorMessage = result.error || 'Upload failed';
+        const details = result.code ? ` (${result.code})` : '';
+        dispatch({
+          type: 'UPLOAD_ERROR',
+          payload: `${errorMessage}${details}`,
+        });
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Upload recording error:', error);
       dispatch({
         type: 'UPLOAD_ERROR',
-        payload: 'Failed to upload recording. Please try again.',
+        payload: 'Network error. Please check your connection and try again.',
       });
     }
-  }, [state.recordingData.uri, state.recordingData.duration]);
+  }, [state.recordingData.uri]);
+
+  const uploadRecordingWithMode = useCallback(
+    async (mode?: 'fast' | 'optimized') => {
+      if (!state.recordingData.uri) {
+        dispatch({
+          type: 'SET_ERROR',
+          payload: 'No recording found to upload',
+        });
+        return;
+      }
+
+      const selectedMode = mode || state.coachingMode;
+      dispatch({ type: 'START_UPLOAD' });
+
+      try {
+        const result = await apiService.submitCheckinWithMode(
+          state.recordingData.uri,
+          selectedMode
+        );
+
+        if (result.success && result.data) {
+          // Extract processing time from success message
+          const processingTimeMatch = result.message?.match(/(\d+)ms/);
+          const processingTime = processingTimeMatch
+            ? parseInt(processingTimeMatch[1])
+            : undefined;
+
+          dispatch({
+            type: 'UPLOAD_SUCCESS',
+            payload: {
+              data: result.data,
+              processingTime,
+            },
+          });
+
+          // Navigate to results after successful upload
+          dispatch({ type: 'NAVIGATE_TO', payload: 'results' });
+        } else {
+          // Handle API errors with detailed error information
+          const errorMessage = result.error || 'Upload failed';
+          const details = result.code ? ` (${result.code})` : '';
+          dispatch({
+            type: 'UPLOAD_ERROR',
+            payload: `${errorMessage}${details}`,
+          });
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Upload recording with mode error:', error);
+        dispatch({
+          type: 'UPLOAD_ERROR',
+          payload: 'Network error. Please check your connection and try again.',
+        });
+      }
+    },
+    [state.recordingData.uri, state.coachingMode]
+  );
+
+  const setCoachingMode = useCallback((mode: 'fast' | 'optimized') => {
+    dispatch({ type: 'SET_COACHING_MODE', payload: mode });
+  }, []);
 
   const resetApp = useCallback(() => {
     dispatch({ type: 'RESET_RECORDING' });
@@ -407,9 +449,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () => ({
       checkApiHealth,
       uploadRecording,
+      uploadRecordingWithMode,
       resetApp,
+      setCoachingMode,
     }),
-    [checkApiHealth, uploadRecording, resetApp]
+    [
+      checkApiHealth,
+      uploadRecording,
+      uploadRecordingWithMode,
+      resetApp,
+      setCoachingMode,
+    ]
   );
 
   return (

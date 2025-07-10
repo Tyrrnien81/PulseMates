@@ -14,6 +14,7 @@ import { typography } from '../constants/Typography';
 import { spacing } from '../constants/Layout';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { ApiTestComponent } from '../components/ApiTestComponent';
 import { useAppContext } from '../context/AppContext';
 
 export function HomeScreen() {
@@ -116,6 +117,9 @@ export function HomeScreen() {
             )}
           </Card>
 
+          {/* API Testing Component - For development/testing */}
+          <ApiTestComponent />
+
           {/* Start Recording Button */}
           <Button
             title="🎤 Start Mental Check-in"
@@ -141,7 +145,7 @@ export function HomeScreen() {
               disabled={!state.apiHealth.isHealthy}
             />
 
-            {state.checkinData.id && (
+            {state.checkinData.sessionId && (
               <Button
                 title="📊 View Results"
                 onPress={viewResults}
@@ -153,7 +157,7 @@ export function HomeScreen() {
           </View>
 
           {/* Recent Activity */}
-          {state.checkinData.id && (
+          {state.checkinData.sessionId && (
             <Card variant="elevated" padding="lg" style={styles.recentCard}>
               <Text style={styles.recentTitle}>Recent Check-in</Text>
               <View style={styles.recentContent}>
