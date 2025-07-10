@@ -1,12 +1,11 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadAudio, cleanupTempFile } from '../middleware/upload';
-import {
-  MockSTTService,
-  MockSentimentService,
-  MockCoachingService,
-  MockTTSService,
-} from '../services/mockServices';
+import { MockTTSService } from '../services/mockServices';
+import { AssemblyAIService } from '../services/assemblyaiService';
+import { DatabaseService } from '../services/databaseService';
+import { CacheService } from '../services/cacheService';
+import { OptimizedCoachingService } from '../services/optimizedCoachingService';
 import { CheckinResponse, APIError } from '../types';
 
 const router = express.Router();
@@ -50,31 +49,106 @@ router.post('/', async (req: express.Request, res: express.Response) => {
         const sessionId = uuidv4();
         console.log(`🔄 Processing check-in session: ${sessionId}`);
 
-        // Step 1: Speech-to-Text Processing
-        console.log('🎤 Starting speech-to-text processing...');
-        const transcriptionResult =
-          await MockSTTService.transcribe(uploadedFilePath);
+        // Step 1: Check cache first, then Speech-to-Text + Sentiment Analysis with fallback
+        const cacheService = new CacheService();
+        let unifiedResult =
+          await cacheService.getCachedResult(uploadedFilePath);
+
+        if (unifiedResult) {
+          console.log(`💾 Using cached transcription result`);
+        } else {
+          try {
+            console.log(
+              '🎤 Starting AssemblyAI transcription with sentiment analysis...'
+            );
+            const assemblyaiService = new AssemblyAIService();
+            unifiedResult =
+              await assemblyaiService.transcribeWithSentiment(uploadedFilePath);
+
+            // Cache the result for future requests
+            await cacheService.setCachedResult(uploadedFilePath, unifiedResult);
+
+            console.log(
+              `✅ AssemblyAI processing completed: "${unifiedResult.transcript.substring(0, 50)}..."`
+            );
+          } catch (assemblyError) {
+            console.error(
+              `⚠️ AssemblyAI failed, falling back to mock services:`,
+              assemblyError
+            );
+
+            // Fallback to mock services for demo continuity
+            const { MockSTTService, MockSentimentService } = await import(
+              '../services/mockServices'
+            );
+
+            const mockTranscription =
+              await MockSTTService.transcribe(uploadedFilePath);
+            const mockSentiment = await MockSentimentService.analyzeSentiment(
+              mockTranscription.transcript
+            );
+
+            unifiedResult = {
+              transcript: mockTranscription.transcript,
+              confidence: mockTranscription.confidence,
+              sentiment: mockSentiment,
+              processingTime: mockTranscription.processingTime,
+            };
+
+            console.log(
+              `🔄 Fallback processing completed: "${unifiedResult.transcript.substring(0, 50)}..."`
+            );
+          }
+        }
+
         console.log(
-          `✅ Transcription completed: "${transcriptionResult.transcript}" (confidence: ${transcriptionResult.confidence})`
+          `✅ Sentiment analysis: ${unifiedResult.sentiment.label} (score: ${unifiedResult.sentiment.score})`
         );
 
-        // Step 2: Sentiment Analysis
-        console.log('🎭 Analyzing sentiment...');
-        const sentimentResult = await MockSentimentService.analyzeSentiment(
-          transcriptionResult.transcript
+        // Step 2: Database Logging (Real sentiment data)
+        console.log('📊 Logging sentiment data to database...');
+        const databaseService = new DatabaseService();
+        await databaseService.logSentimentData(
+          sessionId,
+          unifiedResult.sentiment
         );
+        console.log(`✅ Sentiment data logged for session: ${sessionId}`);
+
+        // Step 3: AI Coaching Generation (Optimized)
+        console.log('🤖 Generating personalized coaching (optimized)...');
+        const optimizedCoachingService = new OptimizedCoachingService();
+
+        // Multiple ways to select coaching mode for flexible testing:
+        // 1. Query parameter: ?mode=fast or ?mode=optimized
+        // 2. Request header: X-Coaching-Mode: fast or optimized
+        // 3. Environment variable: COACHING_MODE (fallback)
+        const queryMode = req.query.mode as 'fast' | 'optimized';
+        const headerMode = req.headers['x-coaching-mode'] as
+          | 'fast'
+          | 'optimized';
+        const envMode = process.env.COACHING_MODE as 'fast' | 'optimized';
+
+        const coachingMode = queryMode || headerMode || envMode || 'fast';
+
         console.log(
-          `✅ Sentiment analysis completed: ${sentimentResult.label} (score: ${sentimentResult.score})`
+          `🎛️ Using coaching mode: ${coachingMode} (source: ${
+            queryMode
+              ? 'query'
+              : headerMode
+                ? 'header'
+                : envMode
+                  ? 'env'
+                  : 'default'
+          })`
         );
 
-        // Step 3: AI Coaching Generation
-        console.log('🤖 Generating personalized coaching...');
-        const coachingResult = await MockCoachingService.generateCoaching(
-          sentimentResult,
-          transcriptionResult.transcript
+        const coachingResult = await optimizedCoachingService.generateCoaching(
+          unifiedResult.sentiment,
+          unifiedResult.transcript,
+          coachingMode
         );
         console.log(
-          `✅ Coaching generated: ${coachingResult.motivationalMessage.substring(0, 50)}...`
+          `✅ Coaching generated (${coachingMode} mode): ${coachingResult.motivationalMessage.substring(0, 50)}...`
         );
 
         // Step 4: Text-to-Speech for motivational message
@@ -94,8 +168,8 @@ router.post('/', async (req: express.Request, res: express.Response) => {
         const response: CheckinResponse = {
           success: true,
           data: {
-            transcript: transcriptionResult.transcript,
-            sentiment: sentimentResult,
+            transcript: unifiedResult.transcript,
+            sentiment: unifiedResult.sentiment,
             coaching: coachingResult,
             audioUrl: ttsResult.audioUrl,
             sessionId,
