@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,7 @@ export function RecordingScreen() {
   const audioRecording = useAudioRecording();
   const [timeRemaining, setTimeRemaining] = useState(MAX_RECORDING_DURATION);
   const [pulseAnimation] = useState(new Animated.Value(1));
+  const stopRecordingRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
     // Request permissions when component mounts
@@ -46,25 +47,45 @@ export function RecordingScreen() {
           },
         });
 
-        // Navigate to results immediately for testing without backend
+        // Navigate to results immediately to show loading/processing state
         dispatch({ type: 'NAVIGATE_TO', payload: 'results' });
 
-        // Still try to upload in background (will fail gracefully without backend)
-        setTimeout(async () => {
-          try {
-            await actions.uploadRecording();
-          } catch (error) {
-            // Silently fail - we're already on results screen
-            // Upload will be retried when backend is available
-          }
-        }, 500);
+        // Start upload process in background - this will update the results screen with data or errors
+        try {
+          await actions.uploadRecording(recordingUri);
+        } catch (uploadError) {
+          // Error will be handled by the uploadRecording function and shown in results screen
+        }
       } else {
-        Alert.alert('Recording Error', 'Failed to save recording.');
+        Alert.alert(
+          'Recording Error',
+          'Failed to save recording. No recording file was created.'
+        );
+        // Navigate to results to show error state
+        dispatch({
+          type: 'SET_ERROR',
+          payload: 'Recording failed - no audio file was created',
+        });
+        dispatch({ type: 'NAVIGATE_TO', payload: 'results' });
       }
     } catch (error) {
-      Alert.alert('Recording Error', 'Failed to stop recording.');
+      Alert.alert(
+        'Recording Error',
+        `Failed to stop recording: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      // Set error state and navigate to results
+      dispatch({
+        type: 'SET_ERROR',
+        payload: `Recording failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
+      dispatch({ type: 'NAVIGATE_TO', payload: 'results' });
     }
   }, [audioRecording, dispatch, actions]);
+
+  // Store the stopRecording function in a ref to avoid dependency cycles
+  useEffect(() => {
+    stopRecordingRef.current = stopRecording;
+  }, [stopRecording]);
 
   useEffect(() => {
     // Pulse animation for recording button
@@ -101,15 +122,11 @@ export function RecordingScreen() {
       setTimeRemaining(Math.max(0, remaining));
 
       // Auto-stop at max duration
-      if (remaining <= 0) {
-        stopRecording();
+      if (remaining <= 0 && stopRecordingRef.current) {
+        stopRecordingRef.current();
       }
     }
-  }, [
-    audioRecording.recordingDuration,
-    audioRecording.isRecording,
-    stopRecording,
-  ]);
+  }, [audioRecording.recordingDuration, audioRecording.isRecording]);
 
   useEffect(() => {
     // Handle audio recording errors
@@ -310,9 +327,7 @@ export function RecordingScreen() {
           {/* Tips - positioned at bottom */}
           {!audioRecording.isRecording && (
             <Card variant="default" padding="md" style={styles.tipsCard}>
-              <Text style={styles.tipsTitle}>
-                💡 Tips for a good recording:
-              </Text>
+              <Text style={styles.tipsTitle}>Tips for a good recording:</Text>
               <Text style={styles.tipsText}>
                 • Find a quiet space{'\n'}• Speak clearly and naturally{'\n'}•
                 Share whatever feels comfortable{'\n'}• There&apos;s no right or

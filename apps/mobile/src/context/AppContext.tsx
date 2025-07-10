@@ -272,7 +272,7 @@ interface AppContextType {
   dispatch: React.Dispatch<AppAction>;
   actions: {
     checkApiHealth: () => Promise<void>;
-    uploadRecording: () => Promise<void>;
+    uploadRecording: (recordingUri?: string) => Promise<void>;
     uploadRecordingWithMode: (mode?: 'fast' | 'optimized') => Promise<void>;
     resetApp: () => void;
     setCoachingMode: (mode: 'fast' | 'optimized') => void;
@@ -339,52 +339,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const uploadRecording = useCallback(async () => {
-    if (!state.recordingData.uri) {
-      dispatch({ type: 'SET_ERROR', payload: 'No recording found to upload' });
-      return;
-    }
+  const uploadRecording = useCallback(
+    async (recordingUri?: string) => {
+      const uriToUse = recordingUri || state.recordingData.uri;
 
-    dispatch({ type: 'START_UPLOAD' });
-
-    try {
-      const result = await apiService.submitCheckin(state.recordingData.uri);
-
-      if (result.success && result.data) {
-        // Extract processing time from success message
-        const processingTimeMatch = result.message?.match(/(\d+)ms/);
-        const processingTime = processingTimeMatch
-          ? parseInt(processingTimeMatch[1])
-          : undefined;
-
+      if (!uriToUse) {
         dispatch({
-          type: 'UPLOAD_SUCCESS',
-          payload: {
-            data: result.data,
-            processingTime,
-          },
+          type: 'SET_ERROR',
+          payload: 'No recording found to upload',
         });
+        return;
+      }
 
-        // Navigate to results after successful upload
-        dispatch({ type: 'NAVIGATE_TO', payload: 'results' });
-      } else {
-        // Handle API errors with detailed error information
-        const errorMessage = result.error || 'Upload failed';
-        const details = result.code ? ` (${result.code})` : '';
+      dispatch({ type: 'START_UPLOAD' });
+
+      try {
+        const result = await apiService.submitCheckin(uriToUse);
+
+        if (result.success && result.data) {
+          // Extract processing time from success message
+          const processingTimeMatch = result.message?.match(/(\d+)ms/);
+          const processingTime = processingTimeMatch
+            ? parseInt(processingTimeMatch[1])
+            : undefined;
+
+          dispatch({
+            type: 'UPLOAD_SUCCESS',
+            payload: {
+              data: result.data,
+              processingTime,
+            },
+          });
+        } else {
+          // Handle API errors with detailed error information
+          const errorMessage = result.error || 'Upload failed';
+          const details = result.code ? ` (${result.code})` : '';
+          dispatch({
+            type: 'UPLOAD_ERROR',
+            payload: `${errorMessage}${details}`,
+          });
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Upload recording error:', error);
         dispatch({
           type: 'UPLOAD_ERROR',
-          payload: `${errorMessage}${details}`,
+          payload: 'Network error. Please check your connection and try again.',
         });
       }
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Upload recording error:', error);
-      dispatch({
-        type: 'UPLOAD_ERROR',
-        payload: 'Network error. Please check your connection and try again.',
-      });
-    }
-  }, [state.recordingData.uri]);
+    },
+    [state.recordingData.uri]
+  );
 
   const uploadRecordingWithMode = useCallback(
     async (mode?: 'fast' | 'optimized') => {
