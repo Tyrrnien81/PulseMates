@@ -128,7 +128,7 @@ router.post('/', async (req: express.Request, res: express.Response) => {
           | 'optimized';
         const envMode = process.env.COACHING_MODE as 'fast' | 'optimized';
 
-        const coachingMode = queryMode || headerMode || envMode || 'fast';
+        const coachingMode = queryMode || headerMode || envMode || 'optimized';
 
         // Check TTS enablement via query parameter or environment
         const enableTTS =
