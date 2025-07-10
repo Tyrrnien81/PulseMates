@@ -307,6 +307,135 @@ model StressLog {
 
 ---
 
+## 🚨 Phase 4: Enhanced AI Coaching & Crisis Detection
+
+### Crisis Detection System
+
+The API now includes automatic crisis detection for severe negative emotional states:
+
+#### Crisis Detection Logic
+
+```typescript
+// Crisis is detected when:
+const isCrisis = sentiment.score < 0.2 && sentiment.label === 'negative';
+```
+
+**When crisis is detected:**
+
+- Emergency resources are prioritized first
+- Professional crisis messaging is provided
+- Fast coaching mode is automatically used for immediate response
+- Additional safety checks are logged
+
+#### Crisis Response Example
+
+```json
+{
+  "coaching": {
+    "motivationalMessage": "Your feelings are valid and important. You don't have to face this alone. Please reach out to the emergency resources listed below or call 911 if you're in immediate danger. Professional support is available 24/7 to help you through this difficult time.",
+    "resources": [
+      {
+        "title": "Student Affairs – Get Help Now",
+        "description": "Quick access page for immediate help in emergencies, including medical, mental health, or safety crises. Directs to 911 and campus resources.",
+        "url": "https://students.wisc.edu/guides/get-help-now/",
+        "category": "emergency"
+      },
+      {
+        "title": "UHS Mental Health Services",
+        "description": "Provides free and confidential mental health services for students, including individual, group, and couples counseling, crisis support, and mental health management.",
+        "url": "https://www.uhs.wisc.edu/mental-health/",
+        "category": "counseling"
+      }
+    ]
+  }
+}
+```
+
+### University Resources Integration
+
+**Real UW-Madison Mental Health Resources (9 total):**
+
+#### Counseling Services (3)
+
+- **UHS Mental Health Services** - Free confidential services
+- **UHS Individual Counseling** - One-on-one professional support
+- **Counseling Psychology Training Clinic** - Low-cost community services
+
+#### Mindfulness & Meditation (3)
+
+- **UW Mindfulness & Meditation Classes** - Campus recreation center classes
+- **Center for Healthy Minds** - Free guided meditations and apps
+- **UW Health Mindfulness Program** - Clinical mindfulness programs
+
+#### Emergency Resources (3)
+
+- **Student Affairs – Get Help Now** - Crisis emergency access
+- **UW–Madison Emergency Procedures** - Campus emergency protocols
+- **Emergency Management – UW Police** - Crisis response and training
+
+### Intelligent Resource Selection
+
+The API automatically selects appropriate resources based on emotional state:
+
+| Sentiment Score | Label    | Selected Resources          | User Experience                |
+| --------------- | -------- | --------------------------- | ------------------------------ |
+| < 0.2           | negative | **Emergency + Counseling**  | Crisis intervention priority   |
+| 0.2 - 0.4       | negative | **Counseling + Meditation** | Professional support focus     |
+| 0.4 - 0.6       | neutral  | **Meditation + Preventive** | Proactive wellness maintenance |
+| > 0.6           | positive | **Meditation + Growth**     | Positive state reinforcement   |
+
+### Enhanced Coaching Content
+
+#### Professional Breathing Exercises
+
+- **4-7-8 Stress Relief Breathing** - Clinical anxiety reduction technique
+- **Mindful Daily Breathing** - Meditation-based awareness practice
+- **Energy Enhancement Breathing** - Positive state amplification
+
+#### Therapeutic Stretch Instructions
+
+- **Tension Relief Stretches** - Physical stress release techniques
+- **Energizing Workplace Stretches** - Productivity and focus improvement
+- **Vitality Flow Stretches** - Positive energy cultivation
+
+### API Response Changes for Frontend
+
+**New Resource Categories:**
+
+```typescript
+type ResourceCategory = 'counseling' | 'meditation' | 'emergency';
+```
+
+**Enhanced Motivational Messages:**
+
+- Crisis-safe language for emergency situations
+- Professional tone matching emotional severity
+- Empathetic acknowledgment of user feelings
+
+**Example Integration Code:**
+
+```typescript
+// Check for crisis response
+if (response.data.sentiment.score < 0.2 && response.data.sentiment.label === 'negative') {
+  // Handle crisis UI - show emergency resources prominently
+  showEmergencyAlert(response.data.coaching.resources);
+
+  // Use crisis-specific styling
+  applyEmergencyTheme();
+}
+
+// Resource categorization for UI
+const emergencyResources = response.data.coaching.resources.filter(r => r.category === 'emergency');
+const counselingResources = response.data.coaching.resources.filter(
+  r => r.category === 'counseling'
+);
+const meditationResources = response.data.coaching.resources.filter(
+  r => r.category === 'meditation'
+);
+```
+
+---
+
 ## 🚨 Error Handling
 
 ### Common Error Codes
