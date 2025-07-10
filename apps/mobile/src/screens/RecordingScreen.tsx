@@ -20,7 +20,7 @@ import { ScrollView } from 'react-native';
 const MAX_RECORDING_DURATION = 60; // 60 seconds
 
 export function RecordingScreen() {
-  const { dispatch, actions } = useAppContext();
+  const { state, dispatch, actions } = useAppContext();
   const audioRecording = useAudioRecording();
   const [timeRemaining, setTimeRemaining] = useState(MAX_RECORDING_DURATION);
   const [pulseAnimation] = useState(new Animated.Value(1));
@@ -324,6 +324,25 @@ export function RecordingScreen() {
             )}
           </View>
 
+          {/* TTS Settings */}
+          {!audioRecording.isRecording && (
+            <Card variant="default" padding="md" style={styles.settingsCard}>
+              <View style={styles.settingsHeader}>
+                <Text style={styles.settingsTitle}>🎵 Audio Coaching</Text>
+                <Button
+                  title={state.ttsEnabled ? 'ON' : 'OFF'}
+                  onPress={() => actions.setTTSEnabled(!state.ttsEnabled)}
+                  variant={state.ttsEnabled ? 'primary' : 'outline'}
+                  size="small"
+                  style={styles.ttsToggle}
+                />
+              </View>
+              <Text style={styles.settingsText}>
+                Get personalized audio coaching in addition to text feedback
+              </Text>
+            </Card>
+          )}
+
           {/* Tips - positioned at bottom */}
           {!audioRecording.isRecording && (
             <Card variant="default" padding="md" style={styles.tipsCard}>
@@ -448,6 +467,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-evenly',
     paddingVertical: spacing.lg,
   },
+  settingsCard: {
+    backgroundColor: colors.surfaceLight,
+    borderLeftColor: colors.secondary,
+    borderLeftWidth: 4,
+    marginBottom: spacing.lg,
+  },
+  settingsHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  settingsText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  settingsTitle: {
+    ...typography.bodySmall,
+    color: colors.text,
+    fontWeight: '600',
+  },
   timerContainer: {
     alignItems: 'center',
     marginBottom: spacing.xl,
@@ -481,5 +521,8 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '600',
     marginBottom: spacing.sm,
+  },
+  ttsToggle: {
+    minWidth: 50,
   },
 });

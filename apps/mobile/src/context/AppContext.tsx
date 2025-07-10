@@ -27,6 +27,13 @@ export interface AppState {
     } | null;
     coaching: CheckinResponse['coaching'] | null;
     audioUrl: string | null;
+    audioText: string | null;
+    audioMetadata: {
+      duration: number;
+      fileSize: number;
+      format: string;
+      processingTime: number;
+    } | null;
   };
   apiHealth: {
     isHealthy: boolean;
@@ -46,6 +53,7 @@ export interface AppState {
   error: string | null;
   processingTime: number | null;
   coachingMode: 'fast' | 'optimized';
+  ttsEnabled: boolean;
 }
 
 export type AppAction =
@@ -83,7 +91,8 @@ export type AppAction =
       };
     }
   | { type: 'UPLOAD_ERROR'; payload: string }
-  | { type: 'SET_COACHING_MODE'; payload: 'fast' | 'optimized' };
+  | { type: 'SET_COACHING_MODE'; payload: 'fast' | 'optimized' }
+  | { type: 'SET_TTS_ENABLED'; payload: boolean };
 
 const initialState: AppState = {
   currentScreen: 'home',
@@ -99,6 +108,8 @@ const initialState: AppState = {
     sentiment: null,
     coaching: null,
     audioUrl: null,
+    audioText: null,
+    audioMetadata: null,
   },
   apiHealth: {
     isHealthy: false,
@@ -113,6 +124,7 @@ const initialState: AppState = {
   error: null,
   processingTime: null,
   coachingMode: 'fast', // Default to fast mode for demos
+  ttsEnabled: false, // Default TTS disabled
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -162,6 +174,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
           sentiment: null,
           coaching: null,
           audioUrl: null,
+          audioText: null,
+          audioMetadata: null,
         },
         error: null,
         processingTime: null,
@@ -220,7 +234,9 @@ function appReducer(state: AppState, action: AppAction): AppState {
             action.payload.data.coaching,
             action.payload.data.sentiment?.score
           ),
-          audioUrl: action.payload.data.audioUrl,
+          audioUrl: action.payload.data.audioUrl || null,
+          audioText: action.payload.data.audioText || null,
+          audioMetadata: action.payload.data.audioMetadata || null,
         },
         processingTime: action.payload.processingTime || null,
         error: null,
@@ -248,7 +264,9 @@ function appReducer(state: AppState, action: AppAction): AppState {
             action.payload.coaching,
             action.payload.sentiment?.score
           ),
-          audioUrl: action.payload.audioUrl,
+          audioUrl: action.payload.audioUrl || null,
+          audioText: action.payload.audioText || null,
+          audioMetadata: action.payload.audioMetadata || null,
         },
         loading: {
           ...state.loading,
@@ -260,6 +278,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         coachingMode: action.payload,
+      };
+
+    case 'SET_TTS_ENABLED':
+      return {
+        ...state,
+        ttsEnabled: action.payload,
       };
 
     default:
@@ -276,6 +300,7 @@ interface AppContextType {
     uploadRecordingWithMode: (mode?: 'fast' | 'optimized') => Promise<void>;
     resetApp: () => void;
     setCoachingMode: (mode: 'fast' | 'optimized') => void;
+    setTTSEnabled: (enabled: boolean) => void;
   };
 }
 
@@ -354,7 +379,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'START_UPLOAD' });
 
       try {
-        const result = await apiService.submitCheckin(uriToUse);
+        const result = await apiService.submitCheckin(uriToUse, {
+          enableTTS: state.ttsEnabled,
+          mode: state.coachingMode,
+        });
 
         if (result.success && result.data) {
           // Extract processing time from success message
@@ -388,7 +416,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
       }
     },
-    [state.recordingData.uri]
+    [state.recordingData.uri, state.ttsEnabled, state.coachingMode]
   );
 
   const uploadRecordingWithMode = useCallback(
@@ -407,7 +435,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         const result = await apiService.submitCheckinWithMode(
           state.recordingData.uri,
-          selectedMode
+          selectedMode,
+          state.ttsEnabled
         );
 
         if (result.success && result.data) {
@@ -445,11 +474,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
       }
     },
-    [state.recordingData.uri, state.coachingMode]
+    [state.recordingData.uri, state.coachingMode, state.ttsEnabled]
   );
 
   const setCoachingMode = useCallback((mode: 'fast' | 'optimized') => {
     dispatch({ type: 'SET_COACHING_MODE', payload: mode });
+  }, []);
+
+  const setTTSEnabled = useCallback((enabled: boolean) => {
+    dispatch({ type: 'SET_TTS_ENABLED', payload: enabled });
   }, []);
 
   const resetApp = useCallback(() => {
@@ -464,6 +497,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       uploadRecordingWithMode,
       resetApp,
       setCoachingMode,
+      setTTSEnabled,
     }),
     [
       checkApiHealth,
@@ -471,6 +505,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       uploadRecordingWithMode,
       resetApp,
       setCoachingMode,
+      setTTSEnabled,
     ]
   );
 

@@ -15,9 +15,9 @@ import {
   SentimentSkeleton,
   CoachingSkeleton,
 } from '../components/SkeletonLoader';
-import { TranscriptDisplay } from '../components/TranscriptDisplay';
 import { SimpleSentimentBar } from '../components/SentimentMeter';
 import { CoachingCards } from '../components/CoachingCards';
+import { AudioPlayer } from '../components/AudioPlayer';
 import { useAppContext } from '../context/AppContext';
 
 export function ResultsScreen() {
@@ -257,14 +257,13 @@ export function ResultsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={themedStyles.themedContent}>
-          {/* Transcript */}
-          {checkinData.transcript && (
-            <TranscriptDisplay
-              transcript={checkinData.transcript}
-              confidence={0.85}
-              enableTypewriter={false}
-              showDetailedConfidence={true}
-              audioUrl={checkinData.audioUrl || undefined}
+          {/* TTS Audio Player */}
+          {checkinData.audioUrl && (
+            <AudioPlayer
+              audioUrl={checkinData.audioUrl}
+              audioText={checkinData.audioText || undefined}
+              audioMetadata={checkinData.audioMetadata || undefined}
+              style={{ marginBottom: spacing.lg }}
             />
           )}
 
