@@ -8,9 +8,14 @@ import {
   Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as Linking from 'expo-linking';
 import { colors } from '../constants/Colors';
 import { typography } from '../constants/Typography';
 import { spacing, borderRadius } from '../constants/Layout';
+import {
+  useSentimentTheme,
+  useThemedStyles,
+} from '../context/SentimentThemeProvider';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import {
@@ -19,11 +24,65 @@ import {
   CoachingSkeleton,
 } from '../components/SkeletonLoader';
 import { TranscriptDisplay } from '../components/TranscriptDisplay';
-import { ConfidenceIndicator } from '../components/ConfidenceIndicator';
+import { SentimentMeter } from '../components/SentimentMeter';
+import { BreathingGuide } from '../components/BreathingGuide';
 import { useAppContext } from '../context/AppContext';
 
 export function ResultsScreen() {
   const { state, dispatch, actions } = useAppContext();
+  const { theme, sentimentLevel } = useSentimentTheme();
+
+  // Dynamic styles based on current sentiment theme
+  /* eslint-disable react-native/no-unused-styles */
+  const themedStyles = useThemedStyles(theme =>
+    StyleSheet.create({
+      themedCardTitle: {
+        ...typography.h3,
+        color: theme.text,
+        marginBottom: spacing.md,
+      },
+      themedContainer: {
+        backgroundColor: theme.background,
+        flex: 1,
+      },
+      themedContent: {
+        padding: spacing.lg,
+      },
+      themedHeader: {
+        alignItems: 'center',
+        backgroundColor: theme.surface,
+        borderBottomColor: theme.borderLight,
+        borderBottomWidth: 1,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
+      },
+      themedHeaderTitle: {
+        ...typography.h3,
+        color: theme.text,
+      },
+      themedMotivationCard: {
+        backgroundColor: theme.surfaceLight,
+        borderLeftColor: theme.primary,
+        borderLeftWidth: 4,
+        marginBottom: spacing.lg,
+      },
+      themedSecondaryText: {
+        color: theme.textSecondary,
+      },
+      themedSentimentCard: {
+        alignItems: 'center',
+        backgroundColor: theme.surfaceLight,
+        borderColor: theme.border,
+        marginBottom: spacing.lg,
+      },
+      themedText: {
+        color: theme.text,
+      },
+    })
+  );
+  /* eslint-enable react-native/no-unused-styles */
 
   const goHome = () => {
     dispatch({ type: 'NAVIGATE_TO', payload: 'home' });
@@ -36,18 +95,18 @@ export function ResultsScreen() {
   // Show loading if upload is in progress
   if (state.loading.upload || state.loading.processing) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar style="dark" backgroundColor={colors.background} />
+      <SafeAreaView style={themedStyles.themedContainer}>
+        <StatusBar style="dark" backgroundColor={theme.background} />
 
         {/* Header */}
-        <View style={styles.header}>
+        <View style={themedStyles.themedHeader}>
           <Button
             title="← Back"
             onPress={goHome}
             variant="ghost"
             size="small"
           />
-          <Text style={styles.headerTitle}>
+          <Text style={themedStyles.themedHeaderTitle}>
             {state.loading.upload ? 'Uploading...' : 'Processing...'}
           </Text>
           <View style={styles.headerSpacer} />
@@ -57,7 +116,7 @@ export function ResultsScreen() {
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.content}>
+          <View style={themedStyles.themedContent}>
             {/* Status Message */}
             <Card variant="outlined" padding="lg" style={styles.statusCard}>
               <Text style={styles.statusTitle}>
@@ -91,17 +150,17 @@ export function ResultsScreen() {
   // Show error if upload failed
   if (state.error) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar style="dark" backgroundColor={colors.background} />
+      <SafeAreaView style={themedStyles.themedContainer}>
+        <StatusBar style="dark" backgroundColor={theme.background} />
 
-        <View style={styles.header}>
+        <View style={themedStyles.themedHeader}>
           <Button
             title="← Back"
             onPress={goHome}
             variant="ghost"
             size="small"
           />
-          <Text style={styles.headerTitle}>Check-in Results</Text>
+          <Text style={themedStyles.themedHeaderTitle}>Check-in Results</Text>
           <Button
             title="New +"
             onPress={startNewRecording}
@@ -167,13 +226,32 @@ export function ResultsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="dark" backgroundColor={colors.background} />
+    <SafeAreaView style={themedStyles.themedContainer}>
+      <StatusBar style="dark" backgroundColor={theme.background} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={themedStyles.themedHeader}>
         <Button title="← Back" onPress={goHome} variant="ghost" size="small" />
-        <Text style={styles.headerTitle}>Check-in Results</Text>
+        <View style={styles.headerCenter}>
+          <Text style={themedStyles.themedHeaderTitle}>Check-in Results</Text>
+          {state.checkinData.sentiment && (
+            <View
+              style={[
+                styles.sentimentIndicator,
+                { backgroundColor: theme.primary },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.sentimentIndicatorText,
+                  { color: theme.surface },
+                ]}
+              >
+                {sentimentLevel}
+              </Text>
+            </View>
+          )}
+        </View>
         <Button
           title="New +"
           onPress={startNewRecording}
@@ -186,7 +264,7 @@ export function ResultsScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.content}>
+        <View style={themedStyles.themedContent}>
           {/* Recording Info */}
           <Card
             variant="outlined"
@@ -219,36 +297,27 @@ export function ResultsScreen() {
 
           {/* Sentiment Analysis */}
           {checkinData.sentiment && (
-            <Card variant="elevated" padding="lg" style={styles.sentimentCard}>
-              <Text style={styles.cardTitle}>Mood Analysis</Text>
-              <View style={styles.sentimentContainer}>
-                <Text style={styles.sentimentLabel}>
-                  {getSentimentEmoji(checkinData.sentiment.score)}{' '}
-                  {checkinData.sentiment.label}
-                </Text>
-                <View style={styles.sentimentMeter}>
-                  <View
-                    style={[
-                      styles.sentimentFill,
-                      {
-                        width: `${Math.round(checkinData.sentiment.score * 100)}%`,
-                        backgroundColor: getSentimentColor(
-                          checkinData.sentiment.score
-                        ),
-                      },
-                    ]}
-                  />
-                </View>
-                <Text style={styles.sentimentScore}>
-                  Mood Score: {Math.round(checkinData.sentiment.score * 100)}%
-                </Text>
-              </View>
+            <Card
+              variant="elevated"
+              padding="lg"
+              style={themedStyles.themedSentimentCard}
+            >
+              <Text style={themedStyles.themedCardTitle}>Mood Analysis</Text>
 
-              {/* Enhanced Confidence Visualization */}
-              <ConfidenceIndicator
+              <SentimentMeter
+                score={checkinData.sentiment.score}
                 confidence={checkinData.sentiment.confidence}
-                type="sentiment"
-                style={styles.sentimentConfidence}
+                label={checkinData.sentiment.label}
+                size={140}
+                showDetails={true}
+                customColors={{
+                  primary: theme.primary,
+                  secondary: theme.secondary,
+                  background: theme.background,
+                  text: theme.text,
+                  textSecondary: theme.textSecondary,
+                  border: theme.border,
+                }}
               />
             </Card>
           )}
@@ -261,116 +330,105 @@ export function ResultsScreen() {
                 <Card
                   variant="default"
                   padding="lg"
-                  style={styles.motivationCard}
+                  style={themedStyles.themedMotivationCard}
                 >
-                  <Text style={styles.cardTitle}>Personal Message</Text>
+                  <Text style={themedStyles.themedCardTitle}>
+                    Personal Message
+                  </Text>
                   <Text style={styles.motivationText}>
                     {checkinData.coaching.motivationalMessage}
                   </Text>
                 </Card>
               )}
 
-              {/* Breathing Exercise */}
-              {checkinData.coaching.breathingExercise && (
-                <Card
-                  variant="outlined"
-                  padding="lg"
-                  style={styles.exerciseCard}
-                >
-                  <Text style={styles.cardTitle}>
-                    {checkinData.coaching.breathingExercise.title}
+              {/* Emergency Contact */}
+              <Card variant="outlined" padding="lg" style={styles.contactCard}>
+                <Text style={themedStyles.themedCardTitle}>Need Support?</Text>
+                <View style={styles.contactItem}>
+                  <Text style={[styles.contactTitle, themedStyles.themedText]}>
+                    Campus Help
                   </Text>
-                  <Text style={styles.exerciseDescription}>
-                    Duration: {checkinData.coaching.breathingExercise.duration}{' '}
-                    minutes
-                  </Text>
-                  <View style={styles.exerciseInstructions}>
-                    {checkinData.coaching.breathingExercise.instructions.map(
-                      (instruction, index) => (
-                        <Text key={index} style={styles.instructionText}>
-                          {index + 1}. {instruction}
-                        </Text>
-                      )
-                    )}
-                  </View>
-                  <Button
-                    title="Start Exercise"
-                    onPress={() =>
-                      Alert.alert(
-                        'Exercise',
-                        'Breathing exercise feature coming soon!'
-                      )
-                    }
-                    variant="outline"
-                    style={styles.exerciseButton}
-                  />
-                </Card>
-              )}
-
-              {/* Stretch Exercise */}
-              {checkinData.coaching.stretchExercise && (
-                <Card
-                  variant="outlined"
-                  padding="lg"
-                  style={styles.exerciseCard}
-                >
-                  <Text style={styles.cardTitle}>
-                    {checkinData.coaching.stretchExercise.title}
-                  </Text>
-                  <View style={styles.exerciseInstructions}>
-                    {checkinData.coaching.stretchExercise.instructions.map(
-                      (instruction, index) => (
-                        <Text key={index} style={styles.instructionText}>
-                          {index + 1}. {instruction}
-                        </Text>
-                      )
-                    )}
-                  </View>
-                  <Button
-                    title="View Guide"
-                    onPress={() =>
-                      Alert.alert(
-                        'Exercise',
-                        'Stretch exercise guide coming soon!'
-                      )
-                    }
-                    variant="outline"
-                    style={styles.exerciseButton}
-                  />
-                </Card>
-              )}
-
-              {/* Resources */}
-              {checkinData.coaching.resources &&
-                checkinData.coaching.resources.length > 0 && (
-                  <Card
-                    variant="outlined"
-                    padding="lg"
-                    style={styles.resourcesCard}
+                  <Text
+                    style={[
+                      styles.contactDescription,
+                      themedStyles.themedSecondaryText,
+                    ]}
                   >
-                    <Text style={styles.cardTitle}>Helpful Resources</Text>
-                    {checkinData.coaching.resources.map((resource, index) => (
-                      <View key={index} style={styles.resourceItem}>
-                        <Text style={styles.resourceTitle}>
-                          {resource.title}
-                        </Text>
-                        <Text style={styles.resourceDescription}>
-                          {resource.description}
-                        </Text>
-                        <Button
-                          title={`Contact ${resource.type === 'phone' ? '📞' : resource.type === 'email' ? '📧' : '🌐'}`}
-                          onPress={() =>
-                            Alert.alert('Resource', `Contact: ${resource.url}`)
-                          }
-                          variant="ghost"
-                          size="small"
-                          style={styles.resourceButton}
-                        />
-                      </View>
-                    ))}
-                  </Card>
-                )}
+                    24/7 mental health support for students
+                  </Text>
+                  <Button
+                    title="Call Now"
+                    onPress={async () => {
+                      const phoneNumber = 'tel:6082571102';
+                      const displayNumber = '(608) 257-1102';
+
+                      // Check if the device can make phone calls
+                      const canOpenURL = await Linking.canOpenURL(phoneNumber);
+
+                      if (!canOpenURL) {
+                        Alert.alert(
+                          'Phone Not Available',
+                          'This device cannot make phone calls. Please call ' +
+                            displayNumber +
+                            ' directly.',
+                          [{ text: 'OK' }]
+                        );
+                        return;
+                      }
+
+                      Alert.alert(
+                        'Call Campus Help',
+                        `This will call Campus Help at ${displayNumber}`,
+                        [
+                          { text: 'Cancel', style: 'destructive' },
+                          {
+                            text: 'Call',
+                            onPress: async () => {
+                              try {
+                                await Linking.openURL(phoneNumber);
+                              } catch (error) {
+                                Alert.alert(
+                                  'Error',
+                                  'Unable to make phone call. Please dial ' +
+                                    displayNumber +
+                                    ' manually.',
+                                  [{ text: 'OK' }]
+                                );
+                              }
+                            },
+                          },
+                        ]
+                      );
+                    }}
+                    variant="primary"
+                    size="medium"
+                    style={styles.contactButton}
+                  />
+                </View>
+              </Card>
             </>
+          )}
+
+          {/* Breathing Exercise Guide */}
+          {checkinData.sentiment && (
+            <Card variant="elevated" padding="lg" style={styles.breathingCard}>
+              <Text style={themedStyles.themedCardTitle}>
+                Breathing Exercise
+              </Text>
+              <Text
+                style={[
+                  styles.breathingDescription,
+                  themedStyles.themedSecondaryText,
+                ]}
+              >
+                {checkinData.sentiment.score < 0.4
+                  ? 'Take a moment to calm your mind with guided breathing'
+                  : checkinData.sentiment.score < 0.7
+                    ? 'Center yourself with mindful breathing'
+                    : 'Energize your positive mood with rhythmic breathing'}
+              </Text>
+              <BreathingGuide sentimentScore={checkinData.sentiment.score} />
+            </Card>
           )}
 
           {/* Audio Playback */}
@@ -397,12 +455,6 @@ export function ResultsScreen() {
           {/* Actions */}
           <View style={styles.actionsContainer}>
             <Button
-              title="🎤 New Check-in"
-              onPress={startNewRecording}
-              size="large"
-              style={styles.actionButton}
-            />
-            <Button
               title="← Back to Home"
               onPress={goHome}
               variant="outline"
@@ -414,20 +466,6 @@ export function ResultsScreen() {
       </ScrollView>
     </SafeAreaView>
   );
-}
-
-function getSentimentColor(score: number): string {
-  if (score >= 0.6) return colors.success;
-  if (score >= 0.4) return colors.warning;
-  return colors.info;
-}
-
-function getSentimentEmoji(score: number): string {
-  if (score >= 0.8) return '😊';
-  if (score >= 0.6) return '🙂';
-  if (score >= 0.4) return '😐';
-  if (score >= 0.2) return '😞';
-  return '😢';
 }
 
 const styles = StyleSheet.create({
@@ -451,10 +489,41 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     textAlign: 'center',
   },
+  breathingCard: {
+    backgroundColor: colors.surfaceLight,
+    marginBottom: spacing.lg,
+  },
+  breathingDescription: {
+    ...typography.body,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+
   cardTitle: {
     ...typography.h3,
     color: colors.text,
     marginBottom: spacing.md,
+  },
+  contactButton: {
+    alignSelf: 'center',
+    marginTop: spacing.md,
+  },
+  contactCard: {
+    marginBottom: spacing.lg,
+  },
+  contactDescription: {
+    ...typography.body,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  contactItem: {
+    alignItems: 'center',
+  },
+  contactTitle: {
+    ...typography.h4,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+    textAlign: 'center',
   },
   container: {
     backgroundColor: colors.background,
@@ -485,52 +554,16 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: spacing.md,
   },
-  exerciseButton: {
-    alignSelf: 'flex-start',
-  },
-  exerciseCard: {
-    marginBottom: spacing.lg,
-  },
-  exerciseDescription: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    marginBottom: spacing.md,
-  },
-  exerciseInstructions: {
-    marginBottom: spacing.md,
-  },
-  header: {
+  headerCenter: {
     alignItems: 'center',
-    borderBottomColor: colors.borderLight,
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    flex: 1,
   },
   headerSpacer: {
     width: spacing.xxl,
   },
-  headerTitle: {
-    ...typography.h3,
-    color: colors.text,
-  },
   infoText: {
     ...typography.body,
     color: colors.textSecondary,
-  },
-  instructionText: {
-    ...typography.body,
-    color: colors.text,
-    lineHeight: 20,
-    marginBottom: spacing.xs,
-  },
-
-  motivationCard: {
-    backgroundColor: colors.surfaceLight,
-    borderLeftColor: colors.primary,
-    borderLeftWidth: 4,
-    marginBottom: spacing.lg,
   },
   motivationText: {
     ...typography.body,
@@ -562,60 +595,19 @@ const styles = StyleSheet.create({
   recordingInfoCard: {
     marginBottom: spacing.lg,
   },
-  resourceButton: {
-    alignSelf: 'flex-start',
-  },
-  resourceDescription: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  resourceItem: {
-    borderBottomColor: colors.borderLight,
-    borderBottomWidth: 1,
-    marginBottom: spacing.md,
-    paddingBottom: spacing.md,
-  },
-  resourceTitle: {
-    ...typography.h4,
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  resourcesCard: {
-    marginBottom: spacing.lg,
-  },
   scrollView: {
     flex: 1,
   },
-  sentimentCard: {
-    marginBottom: spacing.lg,
+  sentimentIndicator: {
+    borderRadius: borderRadius.md,
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
   },
-  sentimentConfidence: {
-    marginTop: spacing.md,
-  },
-  sentimentContainer: {
-    alignItems: 'center',
-  },
-  sentimentFill: {
-    borderRadius: borderRadius.sm,
-    height: '100%',
-  },
-  sentimentLabel: {
-    ...typography.h2,
-    color: colors.text,
-    marginBottom: spacing.md,
-    textAlign: 'center',
-  },
-  sentimentMeter: {
-    backgroundColor: colors.border,
-    borderRadius: borderRadius.sm,
-    height: 12,
-    marginBottom: spacing.sm,
-    width: '100%',
-  },
-  sentimentScore: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
+  sentimentIndicatorText: {
+    ...typography.caption,
+    fontWeight: '600',
+    textTransform: 'capitalize',
   },
   skeletonCard: {
     marginBottom: spacing.lg,

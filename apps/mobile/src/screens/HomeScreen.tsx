@@ -37,7 +37,6 @@ export function HomeScreen() {
   };
 
   const handleCallCounseling = async () => {
-    // Replace with your campus counseling number
     const phoneNumber = '1-608-265-5600';
     const phoneUrl = `tel:${phoneNumber}`;
 
