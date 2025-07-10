@@ -75,7 +75,9 @@ export function useAudioRecording(): AudioRecordingHook {
       // Check permissions first
       if (!hasPermissions) {
         const granted = await requestPermissions();
-        if (!granted) return false;
+        if (!granted) {
+          return false;
+        }
       }
 
       // Prepare and start recording
@@ -101,22 +103,27 @@ export function useAudioRecording(): AudioRecordingHook {
     try {
       setError(null);
 
-      if (!recorderState.isRecording) {
-        return null;
-      }
-
-      // Stop timer
+      // Stop timer first
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
 
-      // Stop recording
-      await audioRecorder.stop();
+      // Stop recording even if state shows not recording (defensive programming)
+      try {
+        await audioRecorder.stop();
+      } catch (stopError) {
+        // Continue anyway, this might be expected if already stopped
+      }
 
       // Get recording URI
       const uri = audioRecorder.uri;
       setRecordingUri(uri);
+
+      if (!uri) {
+        setError('Recording file not found after stopping');
+        return null;
+      }
 
       return uri;
     } catch (err) {
