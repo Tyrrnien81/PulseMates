@@ -529,5 +529,309 @@ pm.test('Response has required fields', function () {
 
 ---
 
+## 🚨 Phase 4: Crisis Detection & Enhanced Features Testing
+
+### Crisis Detection Testing Scenarios
+
+**Test the automatic crisis detection system for severe negative emotions:**
+
+#### 1. Crisis Situation Test (Score < 0.2)
+
+**Test Audio Content:**
+
+```
+"I feel hopeless and like nothing matters anymore. I can't handle this stress and I don't know what to do."
+```
+
+**Expected Response:**
+
+```json
+{
+  "data": {
+    "sentiment": {
+      "score": 0.1,
+      "label": "negative",
+      "confidence": 0.9
+    },
+    "coaching": {
+      "motivationalMessage": "Your feelings are valid and important. You don't have to face this alone...",
+      "resources": [
+        {
+          "title": "Student Affairs – Get Help Now",
+          "category": "emergency"
+        }
+      ]
+    }
+  }
+}
+```
+
+#### 2. Moderate Negative Test (Score 0.2-0.4)
+
+**Test Audio Content:**
+
+```
+"I'm feeling stressed about my exams and having trouble sleeping."
+```
+
+**Expected Response:**
+
+- Sentiment score: 0.2-0.4
+- Resources: Mix of counseling and meditation
+- No emergency resources prioritized
+
+#### 3. Neutral State Test (Score 0.4-0.6)
+
+**Test Audio Content:**
+
+```
+"Today was okay, nothing special happened but I feel alright."
+```
+
+**Expected Response:**
+
+- Sentiment score: 0.4-0.6
+- Resources: Mindfulness and preventive counseling
+- Proactive wellness focus
+
+#### 4. Positive State Test (Score > 0.6)
+
+**Test Audio Content:**
+
+```
+"I had a great day today! Finished my project and feeling accomplished."
+```
+
+**Expected Response:**
+
+- Sentiment score: > 0.6
+- Resources: Wellness maintenance and growth
+- Positive reinforcement messaging
+
+### University Resources Verification
+
+**Validate that all 9 UW-Madison resources are properly integrated:**
+
+#### Resource Categories to Verify
+
+**1. Counseling Services (3 resources):**
+
+```json
+[
+  {
+    "title": "UHS Mental Health Services",
+    "url": "https://www.uhs.wisc.edu/mental-health/",
+    "category": "counseling"
+  },
+  {
+    "title": "UHS Individual Counseling",
+    "url": "https://www.uhs.wisc.edu/mental-health/individual/",
+    "category": "counseling"
+  },
+  {
+    "title": "Counseling Psychology Training Clinic",
+    "url": "https://counselingpsych.education.wisc.edu/cp/outreach-clinic/training-clinic/about-cptc",
+    "category": "counseling"
+  }
+]
+```
+
+**2. Meditation Resources (3 resources):**
+
+```json
+[
+  {
+    "title": "UW Mindfulness & Meditation Classes",
+    "url": "https://recwell.wisc.edu/mindfulness/",
+    "category": "meditation"
+  },
+  {
+    "title": "Center for Healthy Minds – Mindfulness Resources",
+    "url": "https://cultivatingjustice.chm.wisc.edu/resources/",
+    "category": "meditation"
+  },
+  {
+    "title": "UW Health Mindfulness Program",
+    "url": "https://www.fammed.wisc.edu/aware-medicine/mindfulness/resources/",
+    "category": "meditation"
+  }
+]
+```
+
+**3. Emergency Resources (3 resources):**
+
+```json
+[
+  {
+    "title": "Student Affairs – Get Help Now",
+    "url": "https://students.wisc.edu/guides/get-help-now/",
+    "category": "emergency"
+  },
+  {
+    "title": "UW–Madison Emergency Procedures",
+    "url": "https://ehs.wisc.edu/emergencies/",
+    "category": "emergency"
+  },
+  {
+    "title": "Emergency Management – UW Police",
+    "url": "https://uwpd.wisc.edu/services/emergency-management/",
+    "category": "emergency"
+  }
+]
+```
+
+### Resource Selection Validation Tests
+
+#### Crisis Response Test Script
+
+```javascript
+// Postman Test Script for Crisis Detection
+pm.test('Crisis detection works correctly', function () {
+  const responseJson = pm.response.json();
+  const sentiment = responseJson.data.sentiment;
+  const resources = responseJson.data.coaching.resources;
+
+  if (sentiment.score < 0.2 && sentiment.label === 'negative') {
+    // Verify emergency resources are included
+    const emergencyResources = resources.filter(r => r.category === 'emergency');
+    pm.expect(emergencyResources.length).to.be.at.least(1);
+
+    // Verify "Get Help Now" is prioritized first
+    pm.expect(resources[0].title).to.include('Get Help Now');
+
+    // Verify crisis messaging
+    const message = responseJson.data.coaching.motivationalMessage;
+    pm.expect(message).to.include("You don't have to face this alone");
+  }
+});
+```
+
+#### Resource Category Test Script
+
+```javascript
+// Validate all resources have proper categories
+pm.test('All resources have valid categories', function () {
+  const responseJson = pm.response.json();
+  const resources = responseJson.data.coaching.resources;
+  const validCategories = ['counseling', 'meditation', 'emergency'];
+
+  resources.forEach(resource => {
+    pm.expect(validCategories).to.include(resource.category);
+    pm.expect(resource.url).to.match(/^https?:\/\//); // Valid URL
+    pm.expect(resource.title).to.not.be.empty;
+    pm.expect(resource.description).to.not.be.empty;
+  });
+});
+```
+
+### Enhanced Coaching Content Testing
+
+#### Professional Messaging Validation
+
+```javascript
+// Test for appropriate messaging tone
+pm.test('Professional coaching messaging', function () {
+  const responseJson = pm.response.json();
+  const message = responseJson.data.coaching.motivationalMessage;
+  const sentiment = responseJson.data.sentiment;
+
+  // Crisis messaging should be supportive and professional
+  if (sentiment.score < 0.2) {
+    pm.expect(message).to.include('feelings are valid');
+    pm.expect(message).to.not.include('just think positive'); // Avoid dismissive language
+  }
+
+  // All messages should be encouraging without being dismissive
+  pm.expect(message).to.not.include('snap out of it');
+  pm.expect(message).to.not.include('just get over it');
+});
+```
+
+#### Breathing Exercise Enhancement Test
+
+```javascript
+// Validate enhanced breathing exercises
+pm.test('Enhanced breathing exercises', function () {
+  const responseJson = pm.response.json();
+  const breathingExercise = responseJson.data.coaching.breathingExercise;
+
+  // Check for professional exercise titles
+  const professionalTitles = [
+    '4-7-8 Stress Relief Breathing',
+    'Mindful Daily Breathing',
+    'Energy Enhancement Breathing',
+  ];
+
+  pm.expect(professionalTitles).to.include(breathingExercise.title);
+  pm.expect(breathingExercise.instructions.length).to.be.at.least(4);
+  pm.expect(breathingExercise.duration).to.be.within(2, 6); // 2-6 minutes
+});
+```
+
+### Performance Testing with Crisis Detection
+
+#### Crisis Response Time Test
+
+```javascript
+// Verify crisis situations get immediate response
+pm.test('Crisis situations get fast response', function () {
+  const responseJson = pm.response.json();
+  const sentiment = responseJson.data.sentiment;
+
+  if (sentiment.score < 0.2 && sentiment.label === 'negative') {
+    // Crisis should use fast mode (coaching should be near-instant)
+    pm.expect(pm.response.responseTime).to.be.below(6000); // 6 seconds max
+
+    // Should prioritize speed over personalization in crisis
+    pm.expect(responseJson.data.coaching.motivationalMessage).to.exist;
+  }
+});
+```
+
+### Frontend Integration Testing for Phase 4
+
+#### Crisis UI Handling Test
+
+```javascript
+// Example frontend integration for crisis detection
+const handleCrisisResponse = response => {
+  const { sentiment, coaching } = response.data;
+
+  // Check for crisis situation
+  if (sentiment.score < 0.2 && sentiment.label === 'negative') {
+    // Show emergency alert UI
+    showEmergencyAlert();
+
+    // Filter and prioritize emergency resources
+    const emergencyResources = coaching.resources.filter(r => r.category === 'emergency');
+    displayEmergencyResources(emergencyResources);
+
+    // Apply crisis-specific styling
+    applyEmergencyTheme();
+
+    // Log crisis detection for support team
+    logCrisisDetection(response.data.sessionId);
+  }
+};
+```
+
+### Pre-Production Testing Checklist
+
+**Phase 4 Specific Validations:**
+
+- [ ] Crisis detection accuracy (score < 0.2 triggers emergency resources)
+- [ ] All 9 UW-Madison resources are active and accessible
+- [ ] Emergency resources appear first in crisis situations
+- [ ] Professional messaging tone in all emotional states
+- [ ] Enhanced breathing/stretch exercises are therapeutic
+- [ ] Resource categorization is correct (counseling/meditation/emergency)
+- [ ] Crisis response time is optimized (fast mode auto-selected)
+- [ ] No dismissive language in any coaching messages
+- [ ] All resource URLs are valid and accessible
+- [ ] Crisis messaging includes professional support guidance
+
+---
+
 **💡 Pro Tip:** Save successful test requests as examples in your Postman collection for consistent
-testing and team collaboration.\*\*
+testing and team collaboration. Test crisis scenarios regularly to ensure the safety system works
+reliably.\*\*
