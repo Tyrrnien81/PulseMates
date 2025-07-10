@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
 import { colors } from '../constants/Colors';
 import { typography } from '../constants/Typography';
 import { spacing, borderRadius } from '../constants/Layout';
@@ -17,6 +24,7 @@ export interface TranscriptDisplayProps {
   typewriterSpeed?: number; // milliseconds per character
   showDetailedConfidence?: boolean;
   onTypewriterComplete?: () => void;
+  audioUrl?: string; // Optional coaching audio URL
 }
 
 export function TranscriptDisplay({
@@ -27,6 +35,7 @@ export function TranscriptDisplay({
   typewriterSpeed = 50,
   showDetailedConfidence = false,
   onTypewriterComplete,
+  audioUrl,
 }: TranscriptDisplayProps) {
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -136,11 +145,52 @@ export function TranscriptDisplay({
           style={styles.detailedConfidence}
         />
       )}
+
+      {/* Minimalistic Audio Player */}
+      {audioUrl && (
+        <View style={styles.audioPlayerContainer}>
+          <View style={styles.audioPlayerInfo}>
+            <Text style={styles.audioPlayerIcon}>🎵</Text>
+            <Text style={styles.audioPlayerText}>Coaching Audio</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.playButton}
+            onPress={() =>
+              Alert.alert('Audio Player', 'Audio playback feature coming soon!')
+            }
+          >
+            <Text style={styles.playButtonText}>▶</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </Card>
   );
 }
 
 const styles = StyleSheet.create({
+  audioPlayerContainer: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceLight,
+    borderRadius: borderRadius.sm,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  audioPlayerIcon: {
+    fontSize: 16,
+    marginRight: spacing.sm,
+  },
+  audioPlayerInfo: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+  },
+  audioPlayerText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
   container: {
     marginBottom: spacing.lg,
     maxHeight: 300, // Limit height to prevent taking up entire screen
@@ -164,6 +214,19 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontStyle: 'italic',
     textAlign: 'center',
+  },
+  playButton: {
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.full,
+    height: 32,
+    justifyContent: 'center',
+    width: 32,
+  },
+  playButtonText: {
+    color: colors.surface,
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   streamingBar: {
     alignItems: 'center',
