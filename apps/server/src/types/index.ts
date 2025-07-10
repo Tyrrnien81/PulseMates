@@ -26,13 +26,28 @@ export interface CoachingResponse {
   motivationalMessage: string;
 }
 
+// Audio metadata for TTS (Phase 5)
+export interface AudioMetadata {
+  duration: number;
+  fileSize: number;
+  format: string;
+  processingTime: number;
+  voiceConfig?: {
+    languageCode: string;
+    voiceName: string;
+    ssmlGender: string;
+  };
+}
+
 export interface CheckinResponse {
   success: boolean;
   data: {
     transcript?: string;
     sentiment?: SentimentResult;
     coaching?: CoachingResponse;
-    audioUrl?: string;
+    audioUrl?: string; // Phase 5: TTS audio file URL
+    audioText?: string; // Phase 5: Text that was converted to speech
+    audioMetadata?: AudioMetadata; // Phase 5: Audio file metadata
     sessionId: string;
   };
   processingTime: number;

@@ -70,7 +70,10 @@
 
 **Purpose:** Complete voice processing pipeline  
 **Use Case:** Primary app functionality  
-**Expected Response Time:** 5-8 seconds (fast mode), 8-12 seconds (optimized mode)
+**Expected Response Time:**
+
+- **No TTS:** 4.6s (fast mode), 7-9s (optimized mode)
+- **With TTS:** 5.8s (fast mode), 8-12s (optimized mode)
 
 ---
 
@@ -86,13 +89,31 @@
    - Type: File
    - Value: Upload audio file
 
-### 🎛️ Coaching Mode Control (3 Options)
+### 🎛️ API Control Parameters
+
+#### Coaching Mode Control (3 Options)
 
 **Option 1: Query Parameter (Recommended for Testing)**
 
 ```
 {{BASE_URL}}/api/checkin?mode=fast        # 0ms coaching (demo)
 {{BASE_URL}}/api/checkin?mode=optimized   # 1.5s coaching (production)
+```
+
+#### TTS (Text-to-Speech) Control ✨ NEW in Phase 5
+
+**TTS Query Parameter:**
+
+```
+{{BASE_URL}}/api/checkin?tts=true         # Generate audio coaching
+{{BASE_URL}}/api/checkin?tts=false        # Text-only coaching (default)
+```
+
+**Combined Parameters:**
+
+```
+{{BASE_URL}}/api/checkin?mode=fast&tts=true      # Fast coaching + audio
+{{BASE_URL}}/api/checkin?mode=optimized&tts=true # Personalized coaching + audio
 ```
 
 **Option 2: HTTP Header (Good for App Configuration)**
@@ -111,10 +132,17 @@ COACHING_MODE=fast  # Default server setting
 
 **Mode Comparison:**
 
-| Mode        | Speed | Use Case                 | Response Time |
-| ----------- | ----- | ------------------------ | ------------- |
-| `fast`      | 0ms   | Demos, High-throughput   | 5-6 seconds   |
-| `optimized` | ~1.5s | Production, Personalized | 7-9 seconds   |
+| Mode        | Speed | Use Case                 | Response Time (No TTS) | Response Time (With TTS) |
+| ----------- | ----- | ------------------------ | ---------------------- | ------------------------ |
+| `fast`      | 0ms   | Demos, High-throughput   | 4.6 seconds            | 5.8 seconds              |
+| `optimized` | ~1.5s | Production, Personalized | 7-9 seconds            | 8-12 seconds             |
+
+**TTS Comparison:**
+
+| TTS Setting | Audio Output  | Added Processing Time | File Format | Voice          |
+| ----------- | ------------- | --------------------- | ----------- | -------------- |
+| `tts=false` | No audio      | 0ms                   | N/A         | N/A            |
+| `tts=true`  | MP3 audio URL | ~730ms                | MP3         | Female English |
 
 ### Supported Audio Formats
 
@@ -194,7 +222,15 @@ Expected Sentiment: neutral (score: 0.4-0.7)
       }],
       "motivationalMessage": "Encouraging message..."
     },
-    "audioUrl": "https://api.pulsemates.com/audio/uuid.mp3"
+    // TTS fields (included when ?tts=true) ✨ NEW in Phase 5
+    "audioUrl": "/audio/tts_sessionId_timestamp.mp3",     // URL to audio file (optional)
+    "audioText": "Text content converted to speech",      // TTS source text (optional)
+    "audioMetadata": {                                    // Audio details (optional)
+      "duration": 14,                                     // Audio duration in seconds
+      "fileSize": 83328,                                  // File size in bytes
+      "format": "mp3",                                    // Audio format
+      "processingTime": 730                               // TTS generation time in ms
+    }
   },
   "processingTime": 5260               // Total time in milliseconds
 }
@@ -564,6 +600,156 @@ pm.test('Response has required fields', function () {
     }
   }
 }
+---
+
+## 🔊 Phase 5: TTS (Text-to-Speech) Testing ✨ NEW
+
+### TTS Feature Testing Scenarios
+
+**Test the new audio coaching generation system:**
+
+#### 1. Basic TTS Test
+
+**Request:**
+```
+
+POST {{BASE_URL}}/api/checkin?tts=true&mode=fast Body: form-data with audio file
+
+````
+
+**Expected TTS Fields in Response:**
+```json
+{
+  "data": {
+    "audioUrl": "/audio/tts_sessionId_timestamp.mp3",
+    "audioText": "It's wonderful to hear that you're feeling positive!...",
+    "audioMetadata": {
+      "duration": 14,
+      "fileSize": 83328,
+      "format": "mp3",
+      "processingTime": 730
+    }
+  }
+}
+````
+
+#### 2. TTS Audio File Validation
+
+**Test Steps:**
+
+1. Send request with `?tts=true`
+2. Extract `audioUrl` from response
+3. Make GET request to audio URL
+4. Verify MP3 file downloads successfully
+5. Check audio file properties:
+   - Format: MP3
+   - Duration: Matches `audioMetadata.duration`
+   - Size: Matches `audioMetadata.fileSize`
+
+#### 3. TTS vs Non-TTS Comparison
+
+**Test Both Modes:**
+
+```bash
+# Non-TTS request
+{{BASE_URL}}/api/checkin?tts=false
+
+# TTS request
+{{BASE_URL}}/api/checkin?tts=true
+```
+
+**Validation:**
+
+- Non-TTS: No audio fields in response
+- TTS: All audio fields present
+- Processing time difference: ~730ms additional for TTS
+
+#### 4. TTS Voice Quality Test
+
+**Postman Test Script:**
+
+```javascript
+pm.test('TTS audio metadata is valid', function () {
+  const responseJson = pm.response.json();
+  const audio = responseJson.data.audioMetadata;
+
+  if (audio) {
+    pm.expect(audio.format).to.equal('mp3');
+    pm.expect(audio.duration).to.be.above(0);
+    pm.expect(audio.fileSize).to.be.above(0);
+    pm.expect(audio.processingTime).to.be.below(2000); // Under 2 seconds
+  }
+});
+```
+
+#### 5. TTS Error Handling Test
+
+**Simulate TTS Failure:**
+
+- Service should gracefully fallback to text-only response
+- No audio fields should be present
+- Main response should still succeed
+
+### TTS Performance Testing
+
+#### 1. Processing Time Validation
+
+```javascript
+pm.test('TTS processing time is acceptable', function () {
+  const responseJson = pm.response.json();
+  const processingTime = responseJson.processingTime;
+
+  // With TTS should be under 10 seconds
+  pm.expect(processingTime).to.be.below(10000);
+});
+```
+
+#### 2. Audio File Accessibility Test
+
+```javascript
+pm.test('Audio URL is accessible', function () {
+  const responseJson = pm.response.json();
+  const audioUrl = responseJson.data.audioUrl;
+
+  if (audioUrl) {
+    pm.sendRequest(
+      {
+        url: pm.variables.get('BASE_URL') + audioUrl,
+        method: 'HEAD',
+      },
+      function (err, response) {
+        pm.expect(response.code).to.equal(200);
+        pm.expect(response.headers.get('content-type')).to.include('audio/mp3');
+      }
+    );
+  }
+});
+```
+
+### TTS Integration Test Checklist
+
+- [ ] **Basic TTS Generation**
+  - [ ] `?tts=true` generates audio fields
+  - [ ] `?tts=false` omits audio fields
+  - [ ] Audio URL is valid and accessible
+- [ ] **Audio Quality**
+  - [ ] MP3 format
+  - [ ] Female English voice
+  - [ ] Clear pronunciation
+  - [ ] Appropriate speaking pace
+- [ ] **Performance**
+  - [ ] TTS generation under 2 seconds
+  - [ ] Total response time under 10 seconds
+  - [ ] File size reasonable for duration
+- [ ] **Error Handling**
+  - [ ] Graceful fallback when TTS fails
+  - [ ] No audio fields when disabled
+  - [ ] Main response still succeeds
+- [ ] **File Management**
+  - [ ] Audio files accessible immediately after generation
+  - [ ] Files expire after 1 hour (test separately)
+  - [ ] Cleanup system working (server logs) } }
+
 ```
 
 #### 2. Moderate Negative Test (Score 0.2-0.4)
@@ -571,7 +757,9 @@ pm.test('Response has required fields', function () {
 **Test Audio Content:**
 
 ```
+
 "I'm feeling stressed about my exams and having trouble sleeping."
+
 ```
 
 **Expected Response:**
@@ -585,7 +773,9 @@ pm.test('Response has required fields', function () {
 **Test Audio Content:**
 
 ```
+
 "Today was okay, nothing special happened but I feel alright."
+
 ```
 
 **Expected Response:**
@@ -599,8 +789,10 @@ pm.test('Response has required fields', function () {
 **Test Audio Content:**
 
 ```
+
 "I had a great day today! Finished my project and feeling accomplished."
-```
+
+````
 
 **Expected Response:**
 
@@ -634,7 +826,7 @@ pm.test('Response has required fields', function () {
     "category": "counseling"
   }
 ]
-```
+````
 
 **2. Meditation Resources (3 resources):**
 

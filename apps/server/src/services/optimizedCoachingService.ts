@@ -1,13 +1,31 @@
 import OpenAI from 'openai';
 import { SentimentResult, CoachingResponse } from '../types';
+import { GoogleTTSService, TTSResult } from './googleTtsService';
+import { DatabaseService } from './databaseService';
+
+// Extended interface for coaching response with TTS (Phase 5)
+export interface CoachingResponseWithTTS extends CoachingResponse {
+  audioUrl?: string;
+  audioText?: string;
+  audioMetadata?: {
+    duration: number;
+    fileSize: number;
+    format: string;
+    processingTime: number;
+  };
+}
 
 export class OptimizedCoachingService {
   private openai: OpenAI;
+  private ttsService: GoogleTTSService;
+  private databaseService: DatabaseService;
 
   constructor() {
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
+    this.ttsService = new GoogleTTSService();
+    this.databaseService = new DatabaseService();
   }
 
   // University of Wisconsin-Madison Mental Health Resources
@@ -461,5 +479,211 @@ Guidelines:
         result: optimizedResult,
       },
     };
+  }
+
+  // ========== PHASE 5: TTS INTEGRATION METHODS ==========
+
+  /**
+   * Generate coaching with TTS audio (Phase 5 integration)
+   * Supports both fast and optimized modes with session-based audio management
+   */
+  async generateCoachingWithTTS(
+    sentiment: SentimentResult,
+    transcript: string,
+    sessionId: string,
+    mode: 'fast' | 'optimized' = 'fast',
+    enableTTS: boolean = true
+  ): Promise<CoachingResponseWithTTS> {
+    console.log(`🎙️ Generating coaching with TTS for session: ${sessionId}`);
+    console.log(`🎛️ Mode: ${mode} | TTS enabled: ${enableTTS}`);
+
+    try {
+      // Step 1: Generate standard coaching response
+      const coaching = await this.generateCoaching(sentiment, transcript, mode);
+
+      // Step 2: If TTS disabled, return standard response
+      if (!enableTTS) {
+        console.log('🔇 TTS disabled, returning standard coaching response');
+        return coaching as CoachingResponseWithTTS;
+      }
+
+      // Step 3: Generate TTS audio from motivational message
+      const ttsResult = await this.generateTTSAudio(
+        coaching.motivationalMessage,
+        sessionId
+      );
+
+      // Step 4: Log TTS data to database
+      await this.logTTSSession(
+        sessionId,
+        coaching.motivationalMessage,
+        ttsResult
+      );
+
+      // Step 5: Schedule automatic cleanup
+      this.ttsService.scheduleSessionCleanup(sessionId);
+
+      console.log(`✅ Coaching with TTS completed for session: ${sessionId}`);
+
+      // Step 6: Return extended response
+      return {
+        ...coaching,
+        audioUrl: ttsResult.audioUrl,
+        audioText: coaching.motivationalMessage,
+        audioMetadata: {
+          duration: ttsResult.duration,
+          fileSize: ttsResult.fileSize,
+          format: ttsResult.format,
+          processingTime: ttsResult.processingTime,
+        },
+      };
+    } catch (error) {
+      console.error(
+        `❌ TTS coaching generation failed for session ${sessionId}:`,
+        error
+      );
+
+      // Fallback: Return standard coaching without TTS
+      console.log('🔄 Falling back to standard coaching without TTS');
+      const fallbackCoaching = await this.generateCoaching(
+        sentiment,
+        transcript,
+        mode
+      );
+
+      return {
+        ...fallbackCoaching,
+        audioText: fallbackCoaching.motivationalMessage,
+      } as CoachingResponseWithTTS;
+    }
+  }
+
+  /**
+   * Generate TTS audio from text
+   */
+  private async generateTTSAudio(
+    text: string,
+    sessionId: string
+  ): Promise<TTSResult> {
+    const startTime = Date.now();
+
+    try {
+      console.log(`🔊 Generating TTS audio for session: ${sessionId}`);
+      console.log(`📝 Text to convert: "${text.substring(0, 100)}..."`);
+
+      const ttsResult = await this.ttsService.generateSpeech(text, sessionId);
+
+      const processingTime = Date.now() - startTime;
+      console.log(`✅ TTS audio generated in ${processingTime}ms`);
+
+      return ttsResult;
+    } catch (error) {
+      console.error(`❌ TTS generation failed:`, error);
+      throw new Error(
+        `TTS audio generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Log TTS session data to database
+   */
+  private async logTTSSession(
+    sessionId: string,
+    ttsText: string,
+    ttsResult: TTSResult
+  ): Promise<void> {
+    try {
+      await this.databaseService.createCoachingSession({
+        sessionId,
+        ttsText,
+        audioUrl: ttsResult.audioUrl,
+        audioMetadata: {
+          duration: ttsResult.duration,
+          fileSize: ttsResult.fileSize,
+          format: ttsResult.format,
+          processingTime: ttsResult.processingTime,
+        },
+        voiceConfig: this.ttsService.getServiceInfo()
+          .voiceConfig as unknown as Record<string, unknown>,
+        processingTime: ttsResult.processingTime,
+        fileSize: ttsResult.fileSize,
+        duration: ttsResult.duration,
+      });
+
+      console.log(`📊 TTS session data logged to database: ${sessionId}`);
+    } catch (error) {
+      console.error(`⚠️ Failed to log TTS session data:`, error);
+      // Don't throw error to avoid disrupting main flow
+    }
+  }
+
+  /**
+   * Clean up TTS files for a session
+   */
+  async cleanupTTSSession(sessionId: string): Promise<void> {
+    try {
+      console.log(`🧹 Cleaning up TTS session: ${sessionId}`);
+
+      // Clean up audio files
+      const cleanedFiles = await this.ttsService.cleanupSessionFiles(sessionId);
+
+      // Mark database session as cleaned
+      await this.databaseService.markSessionCleaned(sessionId);
+
+      console.log(
+        `✅ TTS session cleanup completed: ${sessionId} (${cleanedFiles} files removed)`
+      );
+    } catch (error) {
+      console.error(`⚠️ TTS session cleanup failed for ${sessionId}:`, error);
+    }
+  }
+
+  /**
+   * Get TTS service statistics and health info
+   */
+  getTTSServiceInfo(): {
+    serviceInfo: unknown;
+    activeSessions: number;
+    databaseConnected: boolean;
+  } {
+    return {
+      serviceInfo: this.ttsService.getServiceInfo(),
+      activeSessions: this.ttsService.getServiceInfo().activeSessions,
+      databaseConnected: true, // Could add actual health check
+    };
+  }
+
+  /**
+   * Batch cleanup expired TTS sessions
+   */
+  async cleanupExpiredTTSSessions(): Promise<{
+    filesCleanedUp: number;
+    sessionsMarked: number;
+  }> {
+    try {
+      console.log('🧹 Starting batch cleanup of expired TTS sessions...');
+
+      // Clean up expired audio files
+      const filesCleanedUp = await this.ttsService.cleanupExpiredFiles();
+
+      // Get and mark expired database sessions
+      const expiredSessions = await this.databaseService.getExpiredSessions();
+      let sessionsMarked = 0;
+
+      for (const session of expiredSessions) {
+        await this.databaseService.markSessionCleaned(session.sessionId);
+        sessionsMarked++;
+      }
+
+      console.log(
+        `✅ Batch cleanup completed: ${filesCleanedUp} files, ${sessionsMarked} sessions marked`
+      );
+
+      return { filesCleanedUp, sessionsMarked };
+    } catch (error) {
+      console.error('❌ Batch TTS cleanup failed:', error);
+      return { filesCleanedUp: 0, sessionsMarked: 0 };
+    }
   }
 }

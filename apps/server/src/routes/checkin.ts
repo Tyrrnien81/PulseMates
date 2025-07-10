@@ -1,7 +1,7 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadAudio, cleanupTempFile } from '../middleware/upload';
-import { MockTTSService } from '../services/mockServices';
+
 import { AssemblyAIService } from '../services/assemblyaiService';
 import { DatabaseService } from '../services/databaseService';
 import { CacheService } from '../services/cacheService';
@@ -114,8 +114,8 @@ router.post('/', async (req: express.Request, res: express.Response) => {
         );
         console.log(`✅ Sentiment data logged for session: ${sessionId}`);
 
-        // Step 3: AI Coaching Generation (Optimized)
-        console.log('🤖 Generating personalized coaching (optimized)...');
+        // Step 3: AI Coaching Generation with TTS (Phase 5)
+        console.log('🤖 Generating personalized coaching with TTS...');
         const optimizedCoachingService = new OptimizedCoachingService();
 
         // Multiple ways to select coaching mode for flexible testing:
@@ -130,8 +130,12 @@ router.post('/', async (req: express.Request, res: express.Response) => {
 
         const coachingMode = queryMode || headerMode || envMode || 'fast';
 
+        // Check TTS enablement via query parameter or environment
+        const enableTTS =
+          req.query.tts !== 'false' && process.env.ENABLE_TTS !== 'false';
+
         console.log(
-          `🎛️ Using coaching mode: ${coachingMode} (source: ${
+          `🎛️ Using coaching mode: ${coachingMode} | TTS enabled: ${enableTTS} (source: ${
             queryMode
               ? 'query'
               : headerMode
@@ -142,38 +146,52 @@ router.post('/', async (req: express.Request, res: express.Response) => {
           })`
         );
 
-        const coachingResult = await optimizedCoachingService.generateCoaching(
-          unifiedResult.sentiment,
-          unifiedResult.transcript,
-          coachingMode
-        );
+        // Generate coaching with TTS integration (Phase 5)
+        const coachingResult =
+          await optimizedCoachingService.generateCoachingWithTTS(
+            unifiedResult.sentiment,
+            unifiedResult.transcript,
+            sessionId,
+            coachingMode,
+            enableTTS
+          );
+
         console.log(
-          `✅ Coaching generated (${coachingMode} mode): ${coachingResult.motivationalMessage.substring(0, 50)}...`
+          `✅ Coaching with TTS completed (${coachingMode} mode, TTS: ${enableTTS}): ${coachingResult.motivationalMessage.substring(0, 50)}...`
         );
 
-        // Step 4: Text-to-Speech for motivational message
-        console.log('🔊 Converting coaching message to speech...');
-        const ttsResult = await MockTTSService.generateSpeech(
-          coachingResult.motivationalMessage
-        );
-        console.log(
-          `✅ TTS audio generated: ${ttsResult.audioUrl} (${ttsResult.duration}s)`
-        );
+        if (coachingResult.audioUrl) {
+          console.log(
+            `🔊 TTS audio generated: ${coachingResult.audioUrl} (${coachingResult.audioMetadata?.duration}s, ${(coachingResult.audioMetadata?.fileSize || 0) / 1024}KB)`
+          );
+        }
 
         // Calculate total processing time
         const processingTime = Date.now() - startTime;
         console.log(`⚡ Total processing time: ${processingTime}ms`);
 
-        // Build successful response
+        // Build successful response with TTS data (Phase 5)
+        const responseData: CheckinResponse['data'] = {
+          transcript: unifiedResult.transcript,
+          sentiment: unifiedResult.sentiment,
+          coaching: coachingResult,
+          sessionId,
+        };
+
+        // Add TTS fields conditionally to avoid undefined assignment
+        if (coachingResult.audioUrl) {
+          responseData.audioUrl = coachingResult.audioUrl;
+        }
+        if (coachingResult.audioText) {
+          responseData.audioText = coachingResult.audioText;
+        }
+        if (coachingResult.audioMetadata) {
+          responseData.audioMetadata = coachingResult.audioMetadata;
+        }
+
         const response: CheckinResponse = {
           success: true,
-          data: {
-            transcript: unifiedResult.transcript,
-            sentiment: unifiedResult.sentiment,
-            coaching: coachingResult,
-            audioUrl: ttsResult.audioUrl,
-            sessionId,
-          },
+          data: responseData,
           processingTime,
         };
 
