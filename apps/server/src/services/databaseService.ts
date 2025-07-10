@@ -1,6 +1,21 @@
 import { PrismaClient } from '@prisma/client';
 import { SentimentResult } from '../types';
 
+export interface CoachingSessionEntry {
+  id: number;
+  sessionId: string;
+  ttsText: string;
+  audioUrl: string | null;
+  audioMetadata: Record<string, unknown> | null;
+  voiceConfig: Record<string, unknown> | null;
+  processingTime: number | null;
+  fileSize: number | null;
+  duration: number | null;
+  cleanup: boolean;
+  createdAt: Date;
+  expiresAt: Date;
+}
+
 export interface StressLogEntry {
   id: number;
   uuid: string;
@@ -128,6 +143,187 @@ export class DatabaseService {
       console.error(`❌ Failed to cleanup old entries:`, error);
       throw new Error(
         `Database cleanup failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Create coaching session record with TTS data (Phase 5)
+   */
+  async createCoachingSession(data: {
+    sessionId: string;
+    ttsText: string;
+    audioUrl?: string;
+    audioMetadata?: Record<string, unknown>;
+    voiceConfig?: Record<string, unknown>;
+    processingTime?: number;
+    fileSize?: number;
+    duration?: number;
+  }): Promise<void> {
+    try {
+      console.log(`🎙️ Creating coaching session record: ${data.sessionId}`);
+
+      // Set expiration time to 1 hour from now
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+      await this.prisma.coachingSession.create({
+        data: {
+          sessionId: data.sessionId,
+          ttsText: data.ttsText,
+          audioUrl: data.audioUrl || null,
+          audioMetadata: data.audioMetadata || null,
+          voiceConfig: data.voiceConfig || null,
+          processingTime: data.processingTime || null,
+          fileSize: data.fileSize || null,
+          duration: data.duration || null,
+          expiresAt,
+        },
+      });
+
+      console.log(`✅ Coaching session record created successfully`);
+    } catch (error) {
+      console.error(`❌ Failed to create coaching session:`, error);
+      throw new Error(
+        `Coaching session creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Get coaching session by sessionId
+   */
+  async getCoachingSession(
+    sessionId: string
+  ): Promise<CoachingSessionEntry | null> {
+    try {
+      const session = await this.prisma.coachingSession.findUnique({
+        where: { sessionId },
+      });
+
+      return session as CoachingSessionEntry | null;
+    } catch (error) {
+      console.error(`❌ Failed to get coaching session:`, error);
+      throw new Error(
+        `Database query failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Mark coaching session file as cleaned up
+   */
+  async markSessionCleaned(sessionId: string): Promise<void> {
+    try {
+      await this.prisma.coachingSession.update({
+        where: { sessionId },
+        data: { cleanup: true },
+      });
+
+      console.log(`🧹 Session ${sessionId} marked as cleaned`);
+    } catch (error) {
+      console.error(`❌ Failed to mark session as cleaned:`, error);
+      // Don't throw error for cleanup operations to avoid disrupting main flow
+    }
+  }
+
+  /**
+   * Get expired coaching sessions that need cleanup
+   */
+  async getExpiredSessions(): Promise<CoachingSessionEntry[]> {
+    try {
+      const now = new Date();
+
+      const expiredSessions = await this.prisma.coachingSession.findMany({
+        where: {
+          expiresAt: { lt: now },
+          cleanup: false,
+        },
+      });
+
+      return expiredSessions as CoachingSessionEntry[];
+    } catch (error) {
+      console.error(`❌ Failed to get expired sessions:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Delete old coaching sessions (data retention)
+   */
+  async cleanupOldCoachingSessions(hoursToKeep: number = 24): Promise<number> {
+    try {
+      const cutoffDate = new Date(Date.now() - hoursToKeep * 60 * 60 * 1000);
+
+      const result = await this.prisma.coachingSession.deleteMany({
+        where: {
+          createdAt: { lt: cutoffDate },
+        },
+      });
+
+      console.log(`🧹 Cleaned up ${result.count} old coaching sessions`);
+      return result.count;
+    } catch (error) {
+      console.error(`❌ Failed to cleanup old coaching sessions:`, error);
+      throw new Error(
+        `Coaching session cleanup failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Get coaching session statistics
+   */
+  async getCoachingSessionStats(hours: number = 24): Promise<{
+    total: number;
+    withAudio: number;
+    averageProcessingTime: number;
+    totalFileSize: number;
+    averageDuration: number;
+  }> {
+    try {
+      const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+
+      const sessions = await this.prisma.coachingSession.findMany({
+        where: {
+          createdAt: { gte: since },
+        },
+      });
+
+      const withAudio = sessions.filter(
+        (s: CoachingSessionEntry) => s.audioUrl
+      ).length;
+      const totalProcessingTime = sessions
+        .filter((s: CoachingSessionEntry) => s.processingTime)
+        .reduce(
+          (sum: number, s: CoachingSessionEntry) =>
+            sum + (s.processingTime || 0),
+          0
+        );
+      const totalFileSize = sessions
+        .filter((s: CoachingSessionEntry) => s.fileSize)
+        .reduce(
+          (sum: number, s: CoachingSessionEntry) => sum + (s.fileSize || 0),
+          0
+        );
+      const totalDuration = sessions
+        .filter((s: CoachingSessionEntry) => s.duration)
+        .reduce(
+          (sum: number, s: CoachingSessionEntry) => sum + (s.duration || 0),
+          0
+        );
+
+      return {
+        total: sessions.length,
+        withAudio,
+        averageProcessingTime:
+          withAudio > 0 ? totalProcessingTime / withAudio : 0,
+        totalFileSize,
+        averageDuration: withAudio > 0 ? totalDuration / withAudio : 0,
+      };
+    } catch (error) {
+      console.error(`❌ Failed to get coaching session stats:`, error);
+      throw new Error(
+        `Database query failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }

@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { z } from 'zod';
+import path from 'path';
 import checkinRoutes from './routes/checkin';
 
 // Load environment variables
@@ -44,6 +45,20 @@ app.use(morgan(logFormat));
 // Body parser
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Static file serving for TTS audio files (Phase 5)
+app.use(
+  '/audio',
+  express.static(path.join(__dirname, '../uploads/audio'), {
+    maxAge: '1h', // Cache for 1 hour
+    setHeaders: (res, filePath) => {
+      if (path.extname(filePath) === '.mp3') {
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Accept-Ranges', 'bytes');
+      }
+    },
+  })
+);
 
 // Health check endpoint
 app.get('/ping', (_req, res) => {

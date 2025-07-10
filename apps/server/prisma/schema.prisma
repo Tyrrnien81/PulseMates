@@ -88,6 +88,28 @@ model StressLog {
   @@map("stress_logs")
 }
 
+// PulseMates TTS Coaching Session Model (Phase 5)
+model CoachingSession {
+  id            Int      @id @default(autoincrement())
+  sessionId     String   @unique @db.VarChar(36)  // Reuse existing UUID logic
+  ttsText       String   @db.Text                 // Text converted to speech
+  audioUrl      String?  @db.VarChar(500)         // Generated audio file URL
+  audioMetadata Json?                             // File size, duration, format metadata
+  voiceConfig   Json?                             // Voice settings used for TTS
+  processingTime Int?                             // TTS generation time in milliseconds
+  fileSize      Int?                              // Audio file size in bytes
+  duration      Float?                            // Audio duration in seconds
+  cleanup       Boolean  @default(false)          // File cleanup status
+  createdAt     DateTime @default(now()) @map("created_at")
+  expiresAt     DateTime @map("expires_at")       // File expiration time
+
+  @@index([sessionId])
+  @@index([createdAt])
+  @@index([expiresAt])
+  @@index([cleanup])
+  @@map("coaching_sessions")
+}
+
 enum MetricType {
   WEIGHT
   HEIGHT
