@@ -173,7 +173,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"transcript\": \"I'm feeling a bit stressed about my upcoming exams\",\n    \"sentiment\": {\n      \"score\": 0.65,\n      \"label\": \"negative\",\n      \"confidence\": 0.82\n    },\n    \"coaching\": {\n      \"breathingExercise\": {\n        \"title\": \"4-7-8 Breathing Technique\",\n        \"instructions\": [\n          \"Inhale through your nose for 4 counts\",\n          \"Hold your breath for 7 counts\",\n          \"Exhale through your mouth for 8 counts\",\n          \"Repeat 4 times\"\n        ],\n        \"duration\": 120\n      },\n      \"stretchExercise\": {\n        \"title\": \"Neck and Shoulder Release\",\n        \"instructions\": [\n          \"Slowly roll your shoulders backward 5 times\",\n          \"Gently tilt your head to the right, hold 15 seconds\",\n          \"Repeat on the left side\"\n        ]\n      },\n      \"resources\": [\n        {\n          \"title\": \"University Counseling Center\",\n          \"description\": \"Free confidential counseling services\",\n          \"url\": \"https://university.edu/counseling\",\n          \"category\": \"counseling\"\n        }\n      ],\n      \"motivationalMessage\": \"You're taking a great step by checking in with yourself. Remember, stress about exams is normal, and you have the tools to manage it effectively.\"\n    },\n    \"audioUrl\": \"https://storage.googleapis.com/tts-audio/coaching-response-12345.mp3\"\n  },\n  \"processingTime\": 2450,\n  \"error\": null\n}"
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"sessionId\": \"91edb2fc-ae1b-4dde-a4ca-76b8643dd3c3\",\n    \"transcript\": \"I've been feeling a bit stressed lately with all the assignments and exams coming up.\",\n    \"sentiment\": {\n      \"score\": 0.31,\n      \"label\": \"negative\",\n      \"confidence\": 0.85\n    },\n    \"coaching\": {\n      \"breathingExercise\": {\n        \"title\": \"4-7-8 Breathing Technique\",\n        \"instructions\": [\n          \"Inhale through your nose for 4 counts\",\n          \"Hold your breath for 7 counts\",\n          \"Exhale through your mouth for 8 counts\",\n          \"Repeat 4 times for maximum effect\"\n        ],\n        \"duration\": 120\n      },\n      \"stretchExercise\": {\n        \"title\": \"Neck and Shoulder Release\",\n        \"instructions\": [\n          \"Slowly roll your shoulders backward 5 times\",\n          \"Gently tilt your head to the right, hold 15 seconds\",\n          \"Repeat on the left side\",\n          \"Take deep breaths during each stretch\"\n        ]\n      },\n      \"resources\": [\n        {\n          \"title\": \"University Counseling Center\",\n          \"description\": \"Free confidential counseling services for students\",\n          \"url\": \"https://university.edu/counseling\",\n          \"category\": \"counseling\"\n        },\n        {\n          \"title\": \"Headspace for Students\",\n          \"description\": \"Free meditation and mindfulness app\",\n          \"url\": \"https://headspace.com/students\",\n          \"category\": \"meditation\"\n        },\n        {\n          \"title\": \"Crisis Text Line\",\n          \"description\": \"24/7 mental health crisis support via text\",\n          \"url\": \"https://crisistextline.org\",\n          \"category\": \"emergency\"\n        }\n      ],\n      \"motivationalMessage\": \"Thank you for sharing what's on your mind. It's completely normal to feel stressed about exams and assignments - many students experience this. Remember that you have the strength to handle these challenges, and taking time for self-care like breathing exercises can really help. You're taking a positive step by checking in with yourself.\"\n    },\n    \"audioUrl\": \"https://api.pulsemates.com/audio/91edb2fc-ae1b-4dde-a4ca-76b8643dd3c3.mp3\"\n  },\n  \"processingTime\": 3876\n}"
             },
             {
               "name": "File Too Large",
@@ -206,7 +206,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"success\": false,\n  \"error\": \"File size exceeds maximum limit of 10MB\",\n  \"processingTime\": 50\n}"
+              "body": "{\n  \"success\": false,\n  \"error\": \"File too large. Maximum size allowed: 10MB\",\n  \"timestamp\": \"2025-01-09T10:30:00.000Z\"\n}"
             },
             {
               "name": "Invalid File Format",
@@ -239,7 +239,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"success\": false,\n  \"error\": \"Invalid file format. Supported formats: wav, mp3, m4a\",\n  \"processingTime\": 25\n}"
+              "body": "{\n  \"success\": false,\n  \"error\": \"Invalid file format. Please upload wav, mp3, or m4a files only.\",\n  \"timestamp\": \"2025-01-09T10:30:00.000Z\"\n}"
             }
           ]
         }

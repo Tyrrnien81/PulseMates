@@ -122,10 +122,9 @@ interface CheckinResponse {
   success: true;
   data: {
     sessionId: string; // UUID for this session
-    transcript: string; // Transcribed text
-    confidence: number; // Transcription confidence (0-1)
+    transcript: string; // Transcribed text from audio
     sentiment: {
-      score: number; // Sentiment score (0-1)
+      score: number; // Sentiment score (0-1, lower = negative)
       label: 'positive' | 'negative' | 'neutral';
       confidence: number; // Sentiment confidence (0-1)
     };
@@ -133,7 +132,7 @@ interface CheckinResponse {
       breathingExercise: {
         title: string;
         instructions: string[];
-        duration: number; // Duration in minutes
+        duration: number; // Duration in seconds
       };
       stretchExercise: {
         title: string;
@@ -148,15 +147,9 @@ interface CheckinResponse {
       }>;
       motivationalMessage: string;
     };
-    audioUrl: string; // URL to generated coaching audio
-    audioMetadata: {
-      duration: number; // Audio duration in seconds
-      fileSize: number; // File size in bytes
-      format: 'mp3' | 'wav';
-    };
+    audioUrl: string; // URL to generated coaching audio (mp3)
   };
   processingTime: number; // Total processing time in ms
-  timestamp: string; // ISO timestamp
 }
 ```
 
@@ -186,60 +179,58 @@ curl -X POST http://localhost:4000/api/checkin \
 {
   "success": true,
   "data": {
-    "sessionId": "550e8400-e29b-41d4-a716-446655440000",
-    "transcript": "I'm feeling really stressed about my upcoming exams and I can't seem to focus on studying.",
-    "confidence": 0.94,
+    "sessionId": "91edb2fc-ae1b-4dde-a4ca-76b8643dd3c3",
+    "transcript": "I've been feeling a bit stressed lately with all the assignments and exams coming up.",
     "sentiment": {
-      "score": 0.25,
+      "score": 0.31,
       "label": "negative",
-      "confidence": 0.89
+      "confidence": 0.85
     },
     "coaching": {
       "breathingExercise": {
-        "title": "4-7-8 Calming Breath",
+        "title": "4-7-8 Breathing Technique",
         "instructions": [
-          "Sit comfortably with your back straight",
           "Inhale through your nose for 4 counts",
           "Hold your breath for 7 counts",
           "Exhale through your mouth for 8 counts",
-          "Repeat this cycle 4 times"
+          "Repeat 4 times for maximum effect"
         ],
-        "duration": 5
+        "duration": 120
       },
       "stretchExercise": {
         "title": "Neck and Shoulder Release",
         "instructions": [
-          "Gently tilt your head to the right, hold for 15 seconds",
+          "Slowly roll your shoulders backward 5 times",
+          "Gently tilt your head to the right, hold 15 seconds",
           "Repeat on the left side",
-          "Roll your shoulders backward 5 times",
-          "Take deep breaths throughout"
+          "Take deep breaths during each stretch"
         ]
       },
       "resources": [
         {
-          "title": "Campus Counseling Center",
-          "description": "Free counseling services for students",
-          "url": "https://counseling.university.edu",
+          "title": "University Counseling Center",
+          "description": "Free confidential counseling services for students",
+          "url": "https://university.edu/counseling",
           "category": "counseling"
         },
         {
-          "title": "Headspace - Study Focus",
-          "description": "Meditation sessions designed for students",
-          "url": "https://headspace.com/study",
+          "title": "Headspace for Students",
+          "description": "Free meditation and mindfulness app",
+          "url": "https://headspace.com/students",
           "category": "meditation"
+        },
+        {
+          "title": "Crisis Text Line",
+          "description": "24/7 mental health crisis support via text",
+          "url": "https://crisistextline.org",
+          "category": "emergency"
         }
       ],
-      "motivationalMessage": "Remember, feeling stressed about exams is completely normal. You've prepared well, and taking breaks to breathe and stretch will actually help you focus better. You've got this!"
+      "motivationalMessage": "Thank you for sharing what's on your mind. It's completely normal to feel stressed about exams and assignments - many students experience this. Remember that you have the strength to handle these challenges, and taking time for self-care like breathing exercises can really help. You're taking a positive step by checking in with yourself."
     },
-    "audioUrl": "http://localhost:4000/audio/coaching-550e8400-e29b-41d4.mp3",
-    "audioMetadata": {
-      "duration": 45.6,
-      "fileSize": 1024000,
-      "format": "mp3"
-    }
+    "audioUrl": "https://api.pulsemates.com/audio/91edb2fc-ae1b-4dde-a4ca-76b8643dd3c3.mp3"
   },
-  "processingTime": 2347,
-  "timestamp": "2025-01-09T10:30:00.000Z"
+  "processingTime": 3876
 }
 ```
 

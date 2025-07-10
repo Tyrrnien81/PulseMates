@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { z } from 'zod';
+import checkinRoutes from './routes/checkin';
 
 // Load environment variables
 dotenv.config();
@@ -62,6 +63,9 @@ app.get('/api/health', (_req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// Voice check-in routes
+app.use('/api/checkin', checkinRoutes);
 
 // User creation example endpoint
 app.post('/api/users', (req, res) => {
