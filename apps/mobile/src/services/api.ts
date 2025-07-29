@@ -1,8 +1,10 @@
+import { API_CONFIG } from '../constants/api';
+
 // API Configuration
 // React Native apps cannot connect to 'localhost' - they need the computer's IP address
 // For Android emulator: use 10.0.2.2:4000
 // For iOS simulator/device: use your computer's IP address
-const API_BASE_URL = 'http://10.141.39.175:4000';
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 export interface ApiResponse<T = unknown> {
   success: boolean;
@@ -135,6 +137,11 @@ class ApiService {
       // Create FormData for file upload
       const formData = new FormData();
 
+      // Validate audioUri
+      if (!audioUri) {
+        throw new Error('Audio URI is undefined or null');
+      }
+
       // Detect audio format from URI
       const audioFormat = audioUri.toLowerCase().includes('.wav')
         ? 'audio/wav'
@@ -200,6 +207,11 @@ class ApiService {
   ): Promise<ApiResponse<CheckinResponse>> {
     try {
       const formData = new FormData();
+
+      // Validate audioUri
+      if (!audioUri) {
+        throw new Error('Audio URI is undefined or null');
+      }
 
       const audioFormat = audioUri.toLowerCase().includes('.wav')
         ? 'audio/wav'

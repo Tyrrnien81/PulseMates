@@ -9,6 +9,7 @@ import {
 import { colors } from '../constants/Colors';
 import { typography } from '../constants/Typography';
 import { spacing, borderRadius } from '../constants/Layout';
+import { getAudioUrl } from '../constants/api';
 import { Button } from './ui/Button';
 
 export interface AudioPlayerProps {
@@ -32,10 +33,8 @@ export function AudioPlayer({
   const [hasPermission, setHasPermission] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Construct full URL if needed
-  const fullUrl = audioUrl.startsWith('http')
-    ? audioUrl
-    : `http://10.141.39.175:4000${audioUrl}`;
+  // Construct full URL using the centralized API configuration
+  const fullUrl = getAudioUrl(audioUrl);
 
   // Create audio player with the URL - this is the correct expo-audio API
   const player = useAudioPlayer({ uri: fullUrl });
